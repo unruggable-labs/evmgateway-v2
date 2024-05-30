@@ -1,9 +1,9 @@
-import type {BytesLike, HexString} from '../src/types.js';
-import {ethers} from 'ethers';
+import type { BytesLike, HexString } from '../src/types.js';
+import { ethers } from 'ethers';
 
 // convenience to decode a single ABI type
 export function decodeType(type: string, data: BytesLike) {
-	return ethers.AbiCoder.defaultAbiCoder().decode([type], data)[0];
+  return ethers.AbiCoder.defaultAbiCoder().decode([type], data)[0];
 }
 
 // function packedElementSize(type: string): [step: number, int: boolean] {
@@ -22,12 +22,13 @@ export function decodeType(type: string, data: BytesLike) {
 // }
 
 export function decodeStorageArray(step: number, data: BytesLike): HexString[] {
-	if (!Number.isInteger(step) || step < 1 || step > 32) throw new Error(`invalid step: ${step}`);
-	let v = ethers.getBytes(data);
-	let n = Number(ethers.toBigInt(v.subarray(0, 32)));
-	let per = (32 / step)|0;
-	return Array.from({length: n}, (_, i) => {
-		let x = 64 + ((i / per) << 5) - (i % per) * step;
-		return ethers.hexlify(v.subarray(x - step, x));
-	});
+  if (!Number.isInteger(step) || step < 1 || step > 32)
+    throw new Error(`invalid step: ${step}`);
+  const v = ethers.getBytes(data);
+  const n = Number(ethers.toBigInt(v.subarray(0, 32)));
+  const per = (32 / step) | 0;
+  return Array.from({ length: n }, (_, i) => {
+    const x = 64 + ((i / per) << 5) - (i % per) * step;
+    return ethers.hexlify(v.subarray(x - step, x));
+  });
 }
