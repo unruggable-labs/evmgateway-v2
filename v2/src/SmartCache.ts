@@ -14,17 +14,42 @@ function clock() {
 	return Math.ceil(performance.now());
 }
 
+type CachedValueFunction<T> = () => Promise<T>;
+export class CachedValue<T> {
+	readonly fn;
+	readonly ms_success;
+	readonly ms_error;
+	private exp: number = 0;
+	private value: Promise<T> | undefined;
+	constructor(fn: CachedValueFunction<T>, ms: number, ms_error?: number) {
+		this.fn = async () => fn();
+		this.ms_success = ms;
+		this.ms_error = ms_error ?? Math.ceil(ms / 4);
+	}
+	get peek(): Promise<T> | undefined {
+		return this.value;
+	}
+	get(): Promise<T> {
+		if (this.value && this.exp > clock()) return this.value;
+		this.exp = Infinity; // mark as in-flight
+		let p = this.value = this.fn(); // begin
+		return p.catch(() => ERR).then((x: T | Symbol) => {
+			this.exp = clock() + (x === ERR ? this.ms_error : this.ms_success);
+			return p;
+		});
+	}
+}
+
 export class SmartCache<K = any, V = any> {
 	private readonly cached: Map<K,[exp: number, promise: Promise<V>]> = new Map();
 	private readonly pending: Map<K,Promise<V>> = new Map();
-	private timer: NodeJS.Timeout | undefined;
+	private timer: Timer | undefined;
 	private timer_t: number = Infinity;
-	readonly ms_success: number;
-	readonly ms_error: number;
-	readonly ms_slop: number;
-	readonly max_cached: number;
-	readonly max_pending: number;
-
+	readonly ms_success;
+	readonly ms_error;
+	readonly ms_slop;
+	readonly max_cached;
+	readonly max_pending;
 	constructor({ms = 60000, ms_error, ms_slop = 50, max_cached = 10000, max_pending = 100}: {
 		ms?: number;
 		ms_error?: number;
@@ -45,18 +70,17 @@ export class SmartCache<K = any, V = any> {
 		clearTimeout(this.timer); // kill old
 		this.timer_t = t; // remember fire time
 		this.timer = setTimeout(() => {
-			let {cached} = this;
 			let now = clock();
 			let min = Infinity;
-			for (let [key, [exp]] of cached) {
+			for (let [key, [exp]] of this.cached) {
 				if (exp < now) {
-					cached.delete(key);
+					this.cached.delete(key);
 				} else {
 					min = Math.min(min, exp); // find next
 				}
 			}
 			this.timer_t = Infinity;
-			if (cached.size) {
+			if (this.cached.size) {
 				this.schedule(min); // schedule for next
 			} else {
 				clearTimeout(this.timer);
@@ -71,36 +95,40 @@ export class SmartCache<K = any, V = any> {
 	}
 	add(key: K, value: V | Promise<V>, ms?: number) {
 		if (!ms) ms = this.ms_success;
-		let {cached, max_cached} = this;
-		if (cached.size >= max_cached) { // we need room
-			for (let key of [...cached.keys()].slice(-Math.ceil(max_cached/16))) { // remove batch
-				cached.delete(key);
+		if (this.cached.size >= this.max_cached) { // we need room
+			// TODO: this needs a heap
+			for (let [key] of [...this.cached].sort((a, b) => a[1][0] - b[1][0]).slice(-Math.ceil(this.max_cached/16))) { // remove batch
+				this.cached.delete(key);
 			}
 		}
 		let exp = clock() + ms;
-		cached.set(key, [exp, Promise.resolve(value)]); // add cache entry
+		this.cached.set(key, [exp, Promise.resolve(value)]); // add cache entry
 		this.schedule(exp);
 	}
-	get(key: K, fn: (key: K) => Promise<V>, ms?: number): Promise<V> {
-		let {cached} = this;
-		let c = cached.get(key); // fastpath, check cache
+	peekCached(key: K): Promise<V> | undefined {
+		let c = this.cached.get(key);
 		if (c) {
 			let [exp, q] = c;
 			if (exp > clock()) return q; // still valid
-			cached.delete(key); // expired
+			this.cached.delete(key); // expired
 		}
-		let {pending, max_pending} = this;
-		if (pending.size >= max_pending) throw new Error('busy'); // too many in-flight
-		let p = pending.get(key);
-		if (p) return p; // already in-flight
+		return; // ree
+	}
+	peek(key: K): Promise<V> | undefined {
+		return this.peekCached(key) ?? this.pending.get(key);
+	}
+	get(key: K, fn: (key: K) => Promise<V>, ms?: number): Promise<V> {
+		let p = this.peek(key);
+		if (p) return p;
+		if (this.pending.size >= this.max_pending) throw new Error('busy'); // too many in-flight
 		let q = fn(key); // begin
 		p = q.catch(() => ERR).then(x => { // we got an answer
-			if (pending.delete(key)) { // remove from pending
+			if (this.pending.delete(key)) { // remove from pending
 				this.add(key, q, x && x !== ERR ? ms : this.ms_error); // add original to cache if existed
 			}
 			return q; // resolve to original
 		});
-		pending.set(key, p); // remember in-flight
+		this.pending.set(key, p); // remember in-flight
 		return p; // return original
 	}
 }

@@ -28,6 +28,10 @@ const STEP_BYTES = 255;
 const OP_TARGET         = 1;
 const OP_TARGET_FIRST   = 2;
 
+// idea: push all collects on to stack?
+// add OP_OUTPUT
+// getBytes() = OP_COLLECT(0) OP_OUTPUT
+
 const OP_COLLECT        = 5;
 const OP_COLLECT_FIRST  = 6;
 const OP_COLLECT_RANGE  = 7;
@@ -216,6 +220,7 @@ export class EVMRequest {
 	collect(step: number) { this.addOp(OP_COLLECT).addOp(step).addOutput(); return this; }
 	getValue() { return this.collect(0); }
 	getBytes() { return this.collect(STEP_BYTES); }
+	getTarget() { return this.addOp(OP_COLLECT_TARGET); }
 
 	collectFirstNonzero(step: number) { this.addOp(OP_COLLECT_FIRST).addOp(step).addOutput(); return this; }
 	getFirstNonzeroValue() { return this.collectFirstNonzero(0); }

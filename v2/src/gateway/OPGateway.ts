@@ -19,7 +19,7 @@ type Output = Readonly<{
 	passerRoot: HexString;
 	stateRoot: HexString;
 	blockHash: HexString;
-	slotCache: SmartCache;
+	cache: SmartCache;
 }>;
 
 const OutputRootProof = 'tuple(bytes32 version, bytes32 stateRoot, bytes32 messagePasserStorageRoot, bytes32 latestBlockhash)';
@@ -28,14 +28,14 @@ function outputRootProof(output: Output) {
 }
 
 export class OPGateway extends EZCCIP {
-	static op_mainnet(a: ProviderPair & Partial<GatewayConfig>) {
+	static opMainnet(a: ProviderPair & Partial<GatewayConfig>) {
 		// https://docs.optimism.io/chain/addresses
 		return new this({
 			L2OutputOracle: '0xdfe97868233d1aa22e815a266982f2cf17685a27',
 			...a,
 		});
 	}
-	static base_mainnet(a: ProviderPair & Partial<GatewayConfig>) {
+	static baseMainnet(a: ProviderPair & Partial<GatewayConfig>) {
 		// https://docs.base.org/docs/base-contracts
 		return new this({
 			L2OutputOracle: '0x56315b90c40730925ec5485cf004d835058518A0',
@@ -47,7 +47,7 @@ export class OPGateway extends EZCCIP {
 	readonly L2ToL1MessagePasser: string;
 	readonly L2OutputOracle: ethers.Contract;
 	readonly callCache: SmartCache<string, string> = new SmartCache({max_cached: 100});
-	readonly outputCache: SmartCache = new SmartCache({ms: 60*60000, max_cached: 10});
+	readonly outputCache: SmartCache<number, Output> = new SmartCache({ms: 60*60000, max_cached: 10});
 	constructor({provider1, provider2, L2OutputOracle, L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016'}: ProviderPair & GatewayConfig) {
 		super();
 		this.provider1 = provider1;
@@ -57,17 +57,16 @@ export class OPGateway extends EZCCIP {
 			'function latestOutputIndex() external view returns (uint256)',
 			'function getL2Output(uint256 outputIndex) external view returns (tuple(bytes32 outputRoot, uint128 t, uint128 block))',
 		], provider1);
-
 		this.register(`getStorageSlots(address target, bytes32[] commands, bytes[] constants) external view returns (bytes)`, async ([target, commands, constants], context, history) => {
-			let hash = ethers.keccak256(context.calldata);
+			let latest = await this.latestOutputIndex();
+			let hash = ethers.id(`${latest}:${context.calldata}`);
 			history.show = [hash];
 			return this.callCache.get(hash, async () => {
-				let latest = await this.latestOutputIndex();
 				let output = await this.outputCache.get(latest, x => this.fetchOutput(x));
-				let expander = new EVMProver(this.provider2, output.block, output.slot_cache);
+				let prover = new EVMProver(this.provider2, output.block, output.cache);
 				let req = new EVMRequestV1(target, commands, constants).v2();
-				let values = await expander.eval(req.ops, req.inputs);
-				let [[accountProof], [_, storageProofs]] = await expander.prove(values);
+				let values = await prover.eval(req.ops, req.inputs);
+				let [[accountProof], [_, storageProofs]] = await prover.prove(values);
 				let witness = ABI_CODER.encode(
 					[`tuple(uint256 outputIndex, ${OutputRootProof})`, 'tuple(bytes[], bytes[][])'],
 					[[output.index, outputRootProof(output)], [accountProof, storageProofs]]
@@ -84,7 +83,7 @@ export class OPGateway extends EZCCIP {
 				if (index < latest - this.outputCache.max_cached) throw new Error('stale');
 				if (index > latest + 1) throw new Error('future');
 				let output = await this.outputCache.get(index, x => this.fetchOutput(x));
-				let prover = new EVMProver(this.provider2, output.block, output.slot_cache);
+				let prover = new EVMProver(this.provider2, output.block, output.cache);
 				let values = await prover.eval(ethers.getBytes(ops), inputs);
 				let [accountProofs, stateProofs] = await prover.prove(values);
 				return ABI_CODER.encode(
@@ -95,7 +94,7 @@ export class OPGateway extends EZCCIP {
 		});
 	}
 	async latestOutputIndex(): Promise<number> {
-		return this.outputCache.get('LATEST', () => this.L2OutputOracle.latestOutputIndex().then(Number));
+		return this.outputCache.get(0, () => this.L2OutputOracle.latestOutputIndex().then(Number), 60000);
 	}
 	async fetchOutput(index: number): Promise<Output> {
 		let {outputRoot, block} = await this.L2OutputOracle.getL2Output(index);
@@ -110,7 +109,7 @@ export class OPGateway extends EZCCIP {
 			passerRoot,
 			stateRoot: details.stateRoot,
 			blockHash: details.hash,
-			slotCache: new SmartCache({max_cached: 512})
+			cache: new SmartCache({max_cached: 512})
 		};
 	}
 	shutdown() {
