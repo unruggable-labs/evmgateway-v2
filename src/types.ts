@@ -28,3 +28,17 @@ export type ProofSequenceV1 = {
   readonly accountProof: EncodedProof;
   readonly storageProofs: EncodedProof[];
 };
+
+export type KeyOf<C, T> = {
+  [K in keyof C]: C[K] extends T ? K : never;
+}[keyof C];
+
+export type UserConfig = {
+  readonly ANKR_KEY: any;
+  readonly INFURA_KEY: string;
+  readonly ALCHEMY_KEY: string;
+  readonly ALCHEMY_PREMIUM: string;
+  readonly CHAIN_NAME: string;
+  readonly SHOULD_PREFETCH: boolean;
+  readonly PORT: number;
+};

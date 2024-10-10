@@ -1,7 +1,8 @@
 import {
-  AbstractRollupV1,
   type RollupCommit,
   type RollupDeployment,
+  type RollupWitnessV1,
+  AbstractRollup,
 } from '../rollup.js';
 import type {
   HexAddress,
@@ -15,7 +16,7 @@ import { Contract } from 'ethers/contract';
 import { concat } from 'ethers/utils';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { POSEIDON_ABI, ROLLUP_ABI, VERIFIER_ABI } from './types.js';
+import { ROLLUP_ABI } from './types.js';
 import { ABI_CODER, toPaddedHex } from '../utils.js';
 
 // https://github.com/scroll-tech/scroll-contracts/
@@ -23,7 +24,8 @@ import { ABI_CODER, toPaddedHex } from '../utils.js';
 // https://status.scroll.io/
 
 export type ScrollConfig = {
-  ScrollChainCommitmentVerifier: HexAddress;
+  ScrollChain: HexAddress;
+  poseidon: HexAddress;
   apiURL: string;
 };
 
@@ -34,57 +36,42 @@ export type ScrollCommit = RollupCommit<EthProver> & {
 // 20240815: commits are approximately every minute
 // to make caching useful, we align to a step
 // note: use 1 to disable the alignment
-//const commitStep = 15; // effectively minutes
-// 20240827: finalization is only every ~15
+// 20240827: finalization is every ~15 min
 
-export class ScrollRollup extends AbstractRollupV1<ScrollCommit> {
+export class ScrollRollup
+  extends AbstractRollup<ScrollCommit>
+  implements RollupWitnessV1<ScrollCommit>
+{
   // https://docs.scroll.io/en/developers/scroll-contracts/
+  // https://etherscan.io/address/0xC4362457a91B2E55934bDCb7DaaF6b1aB3dDf203
   static readonly mainnetConfig: RollupDeployment<ScrollConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SCROLL,
-    ScrollChainCommitmentVerifier: '0xC4362457a91B2E55934bDCb7DaaF6b1aB3dDf203',
+    ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
+    poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
     apiURL: 'https://mainnet-api-re.scroll.io/api/', // https://scrollscan.com/batches
   };
-
+  // https://sepolia.etherscan.io/address/0x64cb3A0Dcf43Ae0EE35C1C15edDF5F46D48Fa570
   static readonly testnetConfig: RollupDeployment<ScrollConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.SCROLL_SEPOLIA,
-    ScrollChainCommitmentVerifier: '0x64cb3A0Dcf43Ae0EE35C1C15edDF5F46D48Fa570',
+    ScrollChain: '0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0',
+    poseidon: '0xFeE7242E8587d7E22Ea5E9cFC585d0eDB6D57faA',
     apiURL: 'https://sepolia-api-re.scroll.io/api/', // https://sepolia.scrollscan.com/batches
   };
 
-  static async create(providers: ProviderPair, config: ScrollConfig) {
-    const CommitmentVerifier = new Contract(
-      config.ScrollChainCommitmentVerifier,
-      VERIFIER_ABI,
-      providers.provider1
-    );
-    const [rollupAddress, poseidonAddress]: HexAddress[] = await Promise.all([
-      CommitmentVerifier.rollup(),
-      CommitmentVerifier.poseidon(),
-    ]);
-    const rollup = new Contract(rollupAddress, ROLLUP_ABI, providers.provider1);
-    const poseidon = new Contract(
-      poseidonAddress,
-      POSEIDON_ABI,
-      providers.provider1
-    );
-    return new this(
-      providers,
-      CommitmentVerifier,
-      config.apiURL,
-      rollup,
-      poseidon
-    );
-  }
-  private constructor(
-    providers: ProviderPair,
-    readonly CommitmentVerifier: Contract,
-    readonly apiURL: string,
-    readonly rollup: Contract,
-    readonly poseidon: Contract
-  ) {
+  readonly apiURL: string;
+  readonly ScrollChain: Contract;
+  readonly poseidon: HexAddress;
+  constructor(providers: ProviderPair, config: ScrollConfig) {
     super(providers);
+    this.apiURL = config.apiURL;
+    this.ScrollChain = new Contract(
+      config.ScrollChain,
+      ROLLUP_ABI,
+      this.provider1
+    );
+    this.poseidon = config.poseidon;
   }
 
   async fetchAPILatestBatchIndex() {
@@ -119,20 +106,19 @@ export class ScrollRollup extends AbstractRollupV1<ScrollCommit> {
     // }
     // throw new Error(`unable to find earlier batch: ${l1BlockNumber}`);
     // 20240830: this is more efficient
-    return this.rollup.lastFinalizedBatchIndex({
+    return this.ScrollChain.lastFinalizedBatchIndex({
       blockTag: l1BlockNumber - 1n,
     });
   }
   override async fetchLatestCommitIndex(): Promise<bigint> {
     // TODO: determine how to this w/o relying on indexer
-    // note: this doesn't use latestBlockTag
-    const [rpc, api] = await Promise.all([
-      this.rollup.lastFinalizedBatchIndex({
+    const [rpc, api]: bigint[] = await Promise.all([
+      this.ScrollChain.lastFinalizedBatchIndex({
         blockTag: this.latestBlockTag,
-      }) as Promise<bigint>,
+      }),
       this.fetchAPILatestBatchIndex(),
     ]);
-    return rpc > api ? api : rpc;
+    return rpc > api ? api : rpc; // min(rpc, api)
   }
   protected override async _fetchParentCommitIndex(
     commit: ScrollCommit
@@ -166,10 +152,7 @@ export class ScrollRollup extends AbstractRollupV1<ScrollCommit> {
       [[commit.index, proofSeq.proofs, proofSeq.order]]
     );
   }
-  override encodeWitnessV1(
-    commit: ScrollCommit,
-    proofSeq: ProofSequenceV1
-  ): HexString {
+  encodeWitnessV1(commit: ScrollCommit, proofSeq: ProofSequenceV1): HexString {
     const compressed = proofSeq.storageProofs.map((storageProof) =>
       concat([
         toPaddedHex(proofSeq.accountProof.length, 1),

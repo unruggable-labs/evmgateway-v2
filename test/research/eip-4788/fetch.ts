@@ -2,7 +2,7 @@
 
 import { toPaddedHex } from '../../../src/utils.js';
 import { CHAINS } from '../../../src/chains.js';
-import { createProvider } from '../../providers.js';
+import { createProvider } from '../../../src/providers.js';
 
 const provider = createProvider(CHAINS.OP);
 

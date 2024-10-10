@@ -4,7 +4,11 @@ import type {
   ProofSequence,
   ProofSequenceV1,
 } from '../types.js';
-import { AbstractRollupV1, type RollupCommit } from '../rollup.js';
+import {
+  AbstractRollup,
+  type RollupCommit,
+  type RollupWitnessV1,
+} from '../rollup.js';
 import { EthProver } from '../eth/EthProver.js';
 import { ZeroHash } from 'ethers/constants';
 import { ABI_CODER } from '../utils.js';
@@ -28,7 +32,10 @@ function outputRootProofTuple(commit: OPCommit) {
 
 const L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016';
 
-export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
+export abstract class AbstractOPRollup
+  extends AbstractRollup<OPCommit>
+  implements RollupWitnessV1<OPCommit>
+{
   L2ToL1MessagePasser = L2ToL1MessagePasser;
   async createCommit(index: bigint, block: BigNumberish): Promise<OPCommit> {
     const prover = new EthProver(this.provider2, block);
@@ -57,7 +64,7 @@ export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
       ]
     );
   }
-  override encodeWitnessV1(commit: OPCommit, proofSeq: ProofSequenceV1) {
+  encodeWitnessV1(commit: OPCommit, proofSeq: ProofSequenceV1) {
     return ABI_CODER.encode(
       [`tuple(uint256, ${OutputRootProofType})`, 'tuple(bytes, bytes[])'],
       [

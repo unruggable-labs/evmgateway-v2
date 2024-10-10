@@ -2,16 +2,21 @@ import { LineaRollup } from '../../src/linea/LineaRollup.js';
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
 import { Foundry } from '@adraffy/blocksmith';
-import { createProviderPair, providerURL } from '../providers.js';
-import { setupTests, pairName } from './common.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
+import { setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
+import { testConfig } from '../../src/environment.js';
+import { chainName } from '../../src/chains.js';
 
 const config = LineaRollup.mainnetConfig;
-describe(pairName(config), async () => {
-  const rollup = new LineaRollup(createProviderPair(config), config);
+describe(testName(config), async () => {
+  const rollup = new LineaRollup(
+    createProviderPair(testConfig(chainName(config.chain2)), config),
+    config
+  );
   const foundry = await Foundry.launch({
-    fork: providerURL(config.chain1),
+    fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
     infoLog: false,
   });
   afterAll(() => foundry.shutdown());

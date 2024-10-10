@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IGatewayVerifier} from './IGatewayVerifier.sol';
+import {IGatewayVerifier, CommitTooOld, CommitTooNew} from './IGatewayVerifier.sol';
 import {IVerifierHooks} from './IVerifierHooks.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
@@ -35,8 +35,12 @@ abstract contract AbstractVerifier is IGatewayVerifier, Ownable {
         return _window;
     }
 
+    function getHooks() external view returns (IVerifierHooks) {
+        return _hooks;
+    }
+
     function _checkWindow(uint256 latest, uint256 got) internal view {
-        if (got + _window < latest) revert('too old');
-        if (got > latest) revert('too new');
+        if (got + _window < latest) revert CommitTooOld(latest, got, _window);
+        if (got > latest) revert CommitTooNew(latest, got);
     }
 }

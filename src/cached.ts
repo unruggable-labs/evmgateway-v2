@@ -239,6 +239,9 @@ export class LRU<K, V> {
     this.#set(key, p);
     return p;
   }
+  setFuture(key: K, promise: Promise<V>) {
+    this.setPending(key, promise).catch(() => {});
+  }
   peek(key: K) {
     return this.#map.get(key);
   }

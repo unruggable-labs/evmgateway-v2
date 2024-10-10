@@ -13,6 +13,8 @@ export const NULL_CODE_HASH = keccakStr('');
 
 export const EVM_BLOCKHASH_DEPTH = 256;
 
+export const MAINNET_BLOCK_SEC = 12;
+
 // hex-prefixed w/o zero-padding
 export function toUnpaddedHex(x: BigNumberish | boolean): HexString {
   return '0x' + BigInt(x).toString(16);

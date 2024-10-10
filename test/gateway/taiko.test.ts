@@ -2,16 +2,21 @@ import { TaikoRollup } from '../../src/taiko/TaikoRollup.js';
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
 import { Foundry } from '@adraffy/blocksmith';
-import { providerURL, createProviderPair } from '../providers.js';
-import { setupTests, pairName } from './common.js';
+import { providerURL, createProviderPair } from '../../src/providers.js';
+import { setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
+import { testConfig } from '../../src/environment.js';
+import { chainName } from '../../src/chains.js';
 
 const config = TaikoRollup.mainnetConfig;
-describe(pairName(config), async () => {
-  const rollup = await TaikoRollup.create(createProviderPair(config), config);
+describe(testName(config), async () => {
+  const rollup = await TaikoRollup.create(
+    createProviderPair(testConfig(chainName(config.chain2)), config),
+    config
+  );
   const foundry = await Foundry.launch({
-    fork: providerURL(config.chain1),
+    fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
     infoLog: false,
   });
   afterAll(() => foundry.shutdown());

@@ -1,17 +1,21 @@
 import { Foundry } from '@adraffy/blocksmith';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
 import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
 import { test, expect, afterAll } from 'bun:test';
 import { toPaddedHex } from '../../src/utils.js';
 import { describe } from '../bun-describe-fix.js';
 import { ZeroHash } from 'ethers/constants';
+import { USER_CONFIG } from '../../src/environment.js';
 
 describe('ZKSyncProver', async () => {
   const config = ZKSyncRollup.mainnetConfig;
-  const rollup = new ZKSyncRollup(createProviderPair(config), config);
+  const rollup = new ZKSyncRollup(
+    createProviderPair(USER_CONFIG, config),
+    config
+  );
   const commit = await rollup.fetchLatestCommit();
   const foundry = await Foundry.launch({
-    fork: providerURL(config.chain1),
+    fork: providerURL(USER_CONFIG, config.chain1),
     infoLog: false,
   });
   afterAll(() => foundry.shutdown());

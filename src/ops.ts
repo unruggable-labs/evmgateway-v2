@@ -41,7 +41,7 @@ export const GATEWAY_OP = {
   PUSH_STACK_SIZE: 35,
 
   PUSH_BYTES: 40,
-  PUSH_INPUT: 41,
+  PUSH_STACK: 41,
   PUSH_OUTPUT: 42,
 
   TARGET: 50,
@@ -82,7 +82,7 @@ export const GATEWAY_OP = {
   SHIFT_RIGHT: 114,
   NOT: 115,
 
-  NONZERO: 120,
+  IS_ZERO: 120,
   EQ: 121,
   LT: 122,
   GT: 123,

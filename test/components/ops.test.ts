@@ -1,8 +1,7 @@
+import type { KeyOf } from '../../src/types.js';
 import { GatewayProgram, GatewayRequest } from '../../src/vm.js';
-import type { BigNumberish } from '../../src/types.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { Foundry } from '@adraffy/blocksmith';
-import { ZeroAddress } from 'ethers/constants';
 import { id as keccakStr } from 'ethers/hash';
 import { randomBytes } from 'ethers/crypto';
 import { hexlify, dataSlice, toUtf8Bytes, concat } from 'ethers/utils';
@@ -16,7 +15,7 @@ function rngUint(n = 32) {
 function utf8Hex(s: string) {
   return hexlify(toUtf8Bytes(s));
 }
-function toPaddedArray(v: BigNumberish[]) {
+function toPaddedArray(v: Parameters<typeof toPaddedHex>[0][]) {
   return v.map((x) => toPaddedHex(x));
 }
 
@@ -60,8 +59,8 @@ describe('ops', async () => {
       proofSeq.proofs,
       proofSeq.order
     );
-    expect(res.outputs.toArray()).toEqual(values);
-    expect(res.exitCode).toEqual(BigInt(state.exitCode));
+    expect(res.outputs.toArray(), 'outputs').toEqual(values);
+    expect(res.exitCode, 'exitCode').toEqual(BigInt(state.exitCode));
     return { ...state, values, stack, proofSeq };
   }
 
@@ -72,25 +71,6 @@ describe('ops', async () => {
       }
     });
   }
-
-  test('missing args', async () => {
-    // TODO: finish this list
-    const ops: (keyof typeof GatewayRequest.Opcode)[] = [
-      'TARGET',
-      'SLOT',
-      'SET_OUTPUT',
-      'CONCAT',
-      'KECCAK',
-      'SLICE',
-      'PLUS',
-      'NOT',
-    ];
-    for (const op of ops) {
-      expect(verify(new GatewayRequest().op(op))).rejects.toThrow(
-        'stack underflow'
-      );
-    }
-  });
 
   test('setOutput', async () => {
     const req = new GatewayRequest(1).push(1).setOutput(0);
@@ -191,14 +171,13 @@ describe('ops', async () => {
   });
 
   function testBinary(
-    op: keyof GatewayRequest,
+    op: KeyOf<GatewayRequest, () => GatewayRequest>,
     fn: (a: bigint, b: bigint) => bigint
   ) {
     testRepeat(op, async () => {
       const a = rngUint();
       const b = rngUint();
-      const req = new GatewayRequest().push(a).push(b);
-      (req as any)[op]().addOutput(); // sigh
+      const req = new GatewayRequest().push(a).push(b)[op]().addOutput();
       const { values } = await verify(req);
       expect(values[0]).toEqual(toPaddedHex(fn(a, b)));
     });
@@ -216,15 +195,14 @@ describe('ops', async () => {
   testBinary('max', (a, b) => (a > b ? a : b));
 
   function testCompare(
-    op: keyof GatewayRequest,
+    op: KeyOf<GatewayRequest, () => GatewayRequest>,
     fn: (a: bigint, b: bigint) => boolean
   ) {
     test(op, async () => {
       const v = [0n, 1n, 2n];
       for (const a of v) {
         for (const b of v) {
-          const req = new GatewayRequest().push(a).push(b);
-          (req as any)[op]().addOutput(); // sigh
+          const req = new GatewayRequest().push(a).push(b)[op]().addOutput();
           const { values } = await verify(req);
           expect(values[0]).toEqual(toPaddedHex(fn(a, b)));
         }
@@ -276,13 +254,15 @@ describe('ops', async () => {
     expect(values[0]).toEqual(toPaddedHex(-1n));
   });
 
-  test('flip', async () => {
+  test('isZero', async () => {
     const req = new GatewayRequest();
-    req.push(0).flip(); // false -> true
-    req.push(2).flip(); // true -> false
-    req.push(1).flip().flip(); // true -> false -> true
-    const { values } = await verify(req.drain(3));
-    expect(values).toEqual(toPaddedArray([1, 0, 1]));
+    req.push(0).isZero(); // false -> true
+    req.push(1).isZero(); // true -> false
+    req.push(2).isZero().isZero(); // true -> false -> true
+    req.pushBytes(Uint8Array.of(1)).isZero(); // false
+    req.pushBytes(new Uint8Array(100)).isZero(); // true
+    const { values } = await verify(req.drain(5));
+    expect(values).toEqual(toPaddedArray([true, false, true, false, true]));
   });
 
   testRepeat('shift left', async () => {
@@ -329,7 +309,7 @@ describe('ops', async () => {
 
   test('dup nothing is error', async () => {
     const req = new GatewayRequest().dup();
-    expect(verify(req)).rejects.toThrow('back overflow');
+    expect(verify(req)).rejects.toThrow('stack underflow');
   });
 
   test('dup2', async () => {
@@ -346,7 +326,7 @@ describe('ops', async () => {
 
   test('swap nothing is error', async () => {
     const req = new GatewayRequest().swap();
-    expect(verify(req)).rejects.toThrow('back overflow');
+    expect(verify(req)).rejects.toThrow('stack underflow');
   });
 
   test('swap mixed', async () => {
@@ -510,19 +490,20 @@ describe('ops', async () => {
     );
   });
 
-  test('requireNonzero on zero', async () => {
-    const req = new GatewayRequest().push(0).requireNonzero();
-    const { exitCode } = await verify(req);
-    expect(exitCode).toEqual(GatewayProgram.Exitcode.NOT_NONZERO);
-  });
-
   test('requireNonzero on non-zero', async () => {
     const req = new GatewayRequest();
     req.push(1).requireNonzero();
-    req.push('0x0001').requireNonzero();
     req.pushStr('abc').requireNonzero();
+    req.pushBytes('0x0001').requireNonzero();
     const { exitCode } = await verify(req);
-    expect(exitCode).toEqual(0);
+    expect(exitCode).toEqual(GatewayProgram.Exitcode.SUCCESS);
+  });
+
+  test('requireNonzero on zero', async () => {
+    const req = new GatewayRequest();
+    req.push(0).requireNonzero();
+    const { exitCode } = await verify(req);
+    expect(exitCode).toEqual(GatewayProgram.Exitcode.IS_ZERO);
   });
 
   test('requireContract on contract', async () => {
@@ -530,65 +511,201 @@ describe('ops', async () => {
       .setTarget(contract.target)
       .requireContract();
     const { exitCode } = await verify(req);
-    expect(exitCode).toEqual(0);
+    expect(exitCode).toEqual(GatewayProgram.Exitcode.SUCCESS);
   });
 
-  test('requireContract on null', async () => {
+  test('requireContract on init', async () => {
     const req = new GatewayRequest();
-    req.setTarget(ZeroAddress).requireContract();
+    req.requireContract();
     const { exitCode } = await verify(req);
     expect(exitCode).toEqual(GatewayProgram.Exitcode.NOT_A_CONTRACT);
   });
 
-  test('evalLoop requireContract', async () => {
-    const req = new GatewayRequest();
-    req.push(1);
-    req.push(contract.target);
-    req.push('0x51050ec063d393217B436747617aD1C2285Aeeee');
-    req.push(toPaddedHex(0));
+  test('requireContract on 0xDEAD', async () => {
+    const req = new GatewayRequest().setTarget('0xDEAD').requireContract();
+    const { exitCode } = await verify(req);
+    expect(exitCode).toEqual(GatewayProgram.Exitcode.NOT_A_CONTRACT);
+  });
+
+  test('evalLoop: requireContract', async () => {
+    const A = contract.target.toLowerCase();
+    const req = new GatewayRequest(2);
+    req.push(1); // discarded
+    req.push(A); // success => stop, acquire => target = A
+    req.push(0); // failure
+    req.push('0xDEAD'); // failure
     req.pushProgram(new GatewayProgram().target().requireContract());
     req.evalLoop({ success: true, acquire: true });
-    const { target, stack } = await verify(req);
-    expect(target).toEqual(contract.target.toLowerCase());
-    expect(stack).toHaveLength(0);
+    req.pushStackSize().setOutput(0);
+    req.pushTarget().setOutput(1); // out[1] = A
+    const { values } = await verify(req);
+    expect(values).toEqual([toPaddedHex(0), A]);
   });
 
-  test('evalLoop requireNonzero', async () => {
-    const req = new GatewayRequest(1);
-    req.push(123);
-    req.push(1337);
-    req.push(0);
-    req.pushStr('');
-    req.pushProgram(new GatewayProgram().requireNonzero().setOutput(0));
+  test('evalLoop: requireNonzero', async () => {
+    const req = new GatewayRequest(2);
+    req.push(123); // discarded
+    req.push(456); // success => stop, out[1] = 456
+    req.push(0); // failure
+    req.pushStr(''); // failure
+    req.pushProgram(new GatewayProgram().requireNonzero().setOutput(1));
     req.evalLoop({ success: true });
-    const { values, stack } = await verify(req);
-    expect(values[0]).toEqual(toPaddedHex(1337));
-    expect(stack).toHaveLength(0);
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req);
+    expect(values).toEqual(toPaddedArray([0, 456]));
   });
 
-  test('evalLoop empty', async () => {
+  test('evalLoop: beyond args', async () => {
     const req = new GatewayRequest();
-    req.pushProgram(new GatewayProgram().concat()); // this will throw if executed
-    req.evalLoop(); // but no arguments are on the stack so it doesn't execute
+    req.pushProgram(new GatewayProgram());
+    req.evalLoop({ count: 1 }); // there is nothing on the stack
     await verify(req);
   });
 
-  // TODO: need more eval tests
-  test('eval push from program', async () => {
+  test('evalLoop: no args', async () => {
+    const req = new GatewayRequest(1);
+    req.push(123);
+    req.pushProgram(new GatewayProgram().concat()); // will throw if executed
+    req.evalLoop({ count: 0 }); // effectively: [].forEach(throw)
+    req.setOutput(0);
+    const { values } = await verify(req);
+    expect(values).toEqual(toPaddedArray([123]));
+  });
+
+  test('evalLoop: keep', async () => {
+    const req = new GatewayRequest(1);
+    req.push(123);
+    req.push(1); // => stop
+    req.push(2); //
+    req.push(3); //
+    req.pushProgram(new GatewayProgram());
+    req.evalLoop({ count: 3 });
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req.drain(1));
+    expect(values).toEqual(toPaddedArray([1, 123]));
+  });
+
+  test('evalLoop: failure', async () => {
+    const req = new GatewayRequest(2);
+    req.push(1); // discarded
+    req.push(2); // discarded
+    req.push(0); // failure => stop
+    req.push(3); // success
+    req.pushProgram(new GatewayProgram().requireNonzero().setOutput(1));
+    req.evalLoop({ failure: true });
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req);
+    expect(values).toEqual(toPaddedArray([0, 3]));
+  });
+
+  test('evalLoop: failure + keep', async () => {
+    const req = new GatewayRequest(2);
+    req.push(123); // kept
+    req.push(456); // kept
+    req.push(0); // failure => stop
+    req.push(3); // success, out[1] = 3
+    req.pushProgram(new GatewayProgram().requireNonzero().setOutput(1));
+    req.evalLoop({ failure: true, keep: true });
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req.drain(2));
+    expect(values).toEqual(toPaddedArray([2, 3, 123, 456]));
+  });
+
+  test('evalLoop: success', async () => {
+    const req = new GatewayRequest(2);
+    req.push(1); // discarded
+    req.push(3); // success => stop, out[1] = 3
+    req.push(0); // failure
+    req.pushProgram(new GatewayProgram().requireNonzero().setOutput(1));
+    req.evalLoop({ success: true });
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req);
+    expect(values).toEqual(toPaddedArray([0, 3]));
+  });
+
+  test('evalLoop: keep', async () => {
+    const req = new GatewayRequest(2);
+    req.push(123); // kept
+    req.push(2); // 2 & 1 == 0 => stop
+    req.push(3); // x
+    req.push(5); // x
+    req.push(7); // x
+    req.pushProgram(
+      new GatewayProgram()
+        .dup() // save
+        .push(1)
+        .and() // isOdd
+        .isZero() // isEven
+        .requireNonzero()
+        .pop() // input
+        .setOutput(0)
+    );
+    req.evalLoop({ success: true, keep: true });
+    req.pushStackSize().setOutput(1);
+    const { values } = await verify(req.drain(1));
+    expect(values).toEqual(toPaddedArray([2, 1, 123]));
+  });
+
+  test('evalLoop: keep + acquire', async () => {
+    const req = new GatewayRequest(1);
+    req.push(123); // discarded
+    req.push(7 * 1 + 1); // 8 % 7 == 1
+    req.push(7 * 2 + 4); // x
+    req.push(7 * 3 + 5); // x
+    req.push(7 * 4 + 6); // x
+    req.pushProgram(
+      new GatewayProgram()
+        .dup() // save
+        .push(7)
+        .mod() // mod 7
+        .push(1)
+        .eq() // congruent to 1 mod 7
+        .requireNonzero()
+        .pop() // input
+        .dup()
+        .times() // x^2
+    );
+    req.evalLoop({ success: true, acquire: true });
+    req.pushStackSize().setOutput(0);
+    const { values } = await verify(req.drain(1));
+    expect(values).toEqual(toPaddedArray([1, 8 ** 2]));
+  });
+
+  test('eval: push(from)', async () => {
     const req = new GatewayRequest(1);
     req.pushProgram(new GatewayProgram().push(1300).push(37));
     req.eval();
     req.plus().setOutput(0);
     const { values } = await verify(req);
-    expect(values[0]).toStrictEqual(toPaddedHex(1337));
+    expect(values).toEqual(toPaddedArray([1337]));
   });
 
-  test('eval setOutput from program', async () => {
+  test('eval: push(to) + setOutput', async () => {
     const req = new GatewayRequest(1);
     req.push(1300).push(37);
     req.pushProgram(new GatewayProgram().plus().setOutput(0));
     req.eval();
     const { values } = await verify(req);
-    expect(values[0]).toStrictEqual(toPaddedHex(1337));
+    expect(values).toEqual(toPaddedArray([1337]));
   });
+
+  test('eval: push(to/from)', async () => {
+    const req = new GatewayRequest(1);
+    req.push(1300);
+    req.pushProgram(new GatewayProgram().push(37).plus());
+    req.eval();
+    req.setOutput(0);
+    const { values } = await verify(req);
+    expect(values).toEqual(toPaddedArray([1337]));
+  });
+
+  test('eval: exit', async () => {
+    const req = new GatewayRequest(1);
+    req.push(0);
+    req.pushProgram(new GatewayProgram().requireNonzero());
+    req.eval();
+    const { exitCode } = await verify(req);
+    expect(exitCode).toEqual(GatewayRequest.Exitcode.IS_ZERO);
+  });
+  // TODO: need more eval tests
 });

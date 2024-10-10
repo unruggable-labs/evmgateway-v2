@@ -1,6 +1,6 @@
 import type { HexString, ProofSequence, Provider } from '../types.js';
 import { AbstractRollup, type RollupCommit } from '../rollup.js';
-import { ABI_CODER, fetchBlock } from '../utils.js';
+import { ABI_CODER, fetchBlock, MAINNET_BLOCK_SEC } from '../utils.js';
 import { EthProver } from './EthProver.js';
 import { encodeRlpBlock } from '../rlp.js';
 
@@ -47,6 +47,6 @@ export class EthSelfRollup extends AbstractRollup<EthSelfCommit> {
     );
   }
   override windowFromSec(sec: number): number {
-    return Math.ceil(sec / 12); // units of blocks
+    return Math.ceil(sec / MAINNET_BLOCK_SEC); // units of blocks
   }
 }

@@ -1,20 +1,15 @@
-import {
-  AbstractRollupV1,
-  type RollupCommitType,
-  type Rollup,
-} from './rollup.js';
+import { type RollupCommitType, type Rollup, supportsV1 } from './rollup.js';
 import type { HexString } from './types.js';
 import { Interface } from 'ethers/abi';
 import { solidityPackedKeccak256, id as keccakStr } from 'ethers/hash';
 import { getBytes } from 'ethers/utils';
-import { keccak256 } from 'ethers/crypto';
 import { CachedMap, CachedValue, LRU } from './cached.js';
 import { ABI_CODER } from './utils.js';
 import { GatewayRequestV1 } from './v1.js';
 import { EZCCIP } from '@resolverworks/ezccip';
 
 export const GATEWAY_ABI = new Interface([
-  `function proveRequest(bytes context, tuple(bytes ops, bytes[] inputs)) returns (bytes)`,
+  `function proveRequest(bytes context, tuple(bytes)) returns (bytes)`,
   `function getStorageSlots(address target, bytes32[] commands, bytes[] constants) returns (bytes)`,
 ]);
 
@@ -48,31 +43,26 @@ export class Gateway<R extends Rollup> extends EZCCIP {
   constructor(readonly rollup: R) {
     super();
     this.register(GATEWAY_ABI, {
-      proveRequest: async ([ctx, { ops, inputs }], _context, history) => {
+      proveRequest: async ([ctx, [req]], _context, history) => {
         // given the requested commitment, we answer: min(requested, latest)
         const commit = await this.getRecentCommit(BigInt(ctx.slice(0, 66)));
         // we cannot hash the context.calldata directly because the requested
         // commit might be different, so we hash using the determined commit
         const hash = solidityPackedKeccak256(
-          ['uint256', 'bytes', 'bytes[]'],
-          [commit.index, ops, inputs]
+          ['uint256', 'bytes'],
+          [commit.index, req]
         );
-        history.show = [
-          commit.index,
-          shortHash(keccak256(ops)), // ops is hashed: function selector
-          shortHash(hash), // request is hashed for counting
-        ];
+        history.show = [commit.index, shortHash(hash)];
         // NOTE: for a given commit + request, calls are pure
         return this.callLRU.cache(hash, async () => {
-          const state = await commit.prover.evalDecoded(ops, inputs);
+          const state = await commit.prover.evalDecoded(req);
           const proofSeq = await commit.prover.prove(state.needs);
           return getBytes(this.rollup.encodeWitness(commit, proofSeq));
         });
       },
     });
     // NOTE: this only works if V1 and V2 share same proof encoding!
-    if (rollup instanceof AbstractRollupV1) {
-      const rollupV1 = rollup; // 20240815: tsc bug https://github.com/microsoft/TypeScript/issues/30625
+    if (supportsV1(rollup)) {
       this.register(GATEWAY_ABI, {
         getStorageSlots: async (
           [target, commands, constants],
@@ -86,7 +76,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
             const req = new GatewayRequestV1(target, commands, constants).v2(); // upgrade v1 to v2
             const state = await commit.prover.evalRequest(req);
             const proofSeq = await commit.prover.proveV1(state.needs);
-            const witness = rollupV1.encodeWitnessV1(commit, proofSeq);
+            const witness = rollup.encodeWitnessV1(commit, proofSeq);
             return getBytes(ABI_CODER.encode(['bytes'], [witness]));
           });
         },
@@ -109,7 +99,8 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     return commit;
   }
   async getRecentCommit(index: bigint) {
-    let commit = await this.getLatestCommit();
+    const latest = await this.getLatestCommit();
+    let commit = latest;
     // check recent cache in linear order
     for (let depth = 0; ; ) {
       if (index >= commit.index) return commit;
@@ -126,7 +117,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
         250 // 20240926: maybe this should be cached for a bit (was 0)
       );
     }
-    throw new Error(`too old: ${index}`);
+    throw new Error(`too old: ${index}`); //  vs (${commit.index}-${latest.index})
   }
   private cachedParentCommitIndex(
     commit: RollupCommitType<R>

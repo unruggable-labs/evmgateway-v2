@@ -12,13 +12,22 @@ export type OPFaultConfig = {
   OptimismPortal: HexAddress;
   GameFinder: HexAddress;
   gameTypes?: number[]; // if empty, dynamically uses respectedGameType()
+  minAgeSec?: number; // if falsy, requires finalization
 };
 
-type ABIFinalizedGame = {
+type ABIFoundGame = {
   gameType: bigint;
+  created: bigint;
   gameProxy: HexAddress;
   l2BlockNumber: bigint;
 };
+
+const GAME_FINDER_MAINNET = '0x475a86934805ef2c52ef61a8fed644d4c9ac91d8';
+const GAME_FINDER_SEPOLIA = '0x4Bf352061FEB81a486A2fd325839d715bDc4038c';
+
+function maskFromGameTypes(gameTypes: number[] = []) {
+  return gameTypes.reduce((a, x) => a | (1 << x), 0);
+}
 
 export class OPFaultRollup extends AbstractOPRollup {
   // https://docs.optimism.io/chain/addresses
@@ -26,7 +35,7 @@ export class OPFaultRollup extends AbstractOPRollup {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.OP,
     OptimismPortal: '0xbEb5Fc579115071764c7423A4f12eDde41f106Ed',
-    GameFinder: '0x5A8E83f0E728bEb821b91bB82cFAE7F67bD36f7e',
+    GameFinder: GAME_FINDER_MAINNET,
   };
 
   // https://docs.base.org/docs/base-contracts/#ethereum-testnet-sepolia
@@ -34,13 +43,14 @@ export class OPFaultRollup extends AbstractOPRollup {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.BASE_SEPOLIA,
     OptimismPortal: '0x49f53e41452C74589E85cA1677426Ba426459e85',
-    GameFinder: '0x0f1449C980253b576aba379B11D453Ac20832a89',
+    GameFinder: GAME_FINDER_SEPOLIA,
   };
 
   // 20240917: delayed constructor not needed
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
   readonly gameTypeBitMask: number;
+  readonly minAgeSec: number;
   constructor(providers: ProviderPair, config: OPFaultConfig) {
     super(providers);
     this.OptimismPortal = new Contract(
@@ -53,10 +63,8 @@ export class OPFaultRollup extends AbstractOPRollup {
       GAME_FINDER_ABI,
       providers.provider1
     );
-    this.gameTypeBitMask = (config.gameTypes ?? []).reduce(
-      (a, x) => a | (1 << x),
-      0
-    );
+    this.minAgeSec = config.minAgeSec ?? 0;
+    this.gameTypeBitMask = maskFromGameTypes(config.gameTypes);
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
@@ -74,8 +82,9 @@ export class OPFaultRollup extends AbstractOPRollup {
     // 20240820: correctly handles the aug 16 respectedGameType change
     // TODO: this should be simplified in the future once there is a better policy
     // 20240822: once again uses a helper contract to reduce rpc burden
-    return this.GameFinder.findFinalizedGameIndex(
+    return this.GameFinder.findGameIndex(
       this.OptimismPortal.target,
+      this.minAgeSec,
       this.gameTypeBitMask,
       0,
       { blockTag: this.latestBlockTag }
@@ -84,19 +93,21 @@ export class OPFaultRollup extends AbstractOPRollup {
   protected override async _fetchParentCommitIndex(
     commit: OPCommit
   ): Promise<bigint> {
-    return this.GameFinder.findFinalizedGameIndex(
+    return this.GameFinder.findGameIndex(
       this.OptimismPortal.target,
+      this.minAgeSec,
       this.gameTypeBitMask,
       commit.index
     );
   }
   protected override async _fetchCommit(index: bigint) {
-    const game: ABIFinalizedGame = await this.GameFinder.getFinalizedGame(
+    const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
       this.OptimismPortal.target,
+      this.minAgeSec,
       this.gameTypeBitMask,
       index
     );
-    if (!game.l2BlockNumber) throw new Error('not finalized');
+    if (!game.l2BlockNumber) throw new Error('invalid game');
     return this.createCommit(index, game.l2BlockNumber);
   }
 

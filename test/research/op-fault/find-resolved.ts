@@ -1,9 +1,13 @@
 import { ethers } from 'ethers';
 import { OPFaultRollup } from '../../../src/op/OPFaultRollup.js';
-import { createProviderPair } from '../../providers.js';
+import { createProviderPair } from '../../../src/providers.js';
+import { USER_CONFIG } from '../../../src/environment.js';
 
 const config = OPFaultRollup.mainnetConfig;
-const rollup = new OPFaultRollup(createProviderPair(config), config);
+const rollup = new OPFaultRollup(
+  createProviderPair(USER_CONFIG, config),
+  config
+);
 
 // find the most recent dispute games
 // warning: these might not be official games!

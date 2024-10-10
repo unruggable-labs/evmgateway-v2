@@ -30,7 +30,7 @@ try {
     seen.add(js!);
     // check for an implementation
     try {
-      await prover.evalDecoded(Uint8Array.of(0, js!), []);
+      await prover.evalDecoded(Uint8Array.of(0, js!));
     } catch (err) {
       if (err instanceof Error && /^unknown op: \d+$/.test(err.message)) {
         throw err;

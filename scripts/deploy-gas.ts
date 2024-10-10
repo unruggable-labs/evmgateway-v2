@@ -1,9 +1,9 @@
 import { Foundry } from '@adraffy/blocksmith';
-import { toPaddedHex } from '../../src/utils.js'; 
+import { toPaddedHex } from '../src/utils.js';
 
 const foundry = await Foundry.launch({ infoLog: false });
 
-const report = {};
+const report: Record<string, bigint> = {};
 foundry.on('deploy', (c) => (report[c.__info.contract] = c.__receipt.gasUsed));
 
 const A = toPaddedHex(1, 20);
@@ -23,16 +23,16 @@ await foundry.deploy({
 // few examples
 await foundry.deploy({
   file: 'OPVerifier',
-  args: [[], 0, A, A],
+  args: [[], 0, A, A, 0],
   libs: { GatewayVM },
 });
 await foundry.deploy({
   file: 'OPFaultVerifier',
-  args: [[], 0, A, A, A, 0],
+  args: [[], 0, A, [A, A, 0, 0]],
   libs: { GatewayVM },
 });
 await foundry.deploy({
-  file: 'OPReverseVerifier',
+  file: 'ReverseOPVerifier',
   args: [[], 0, A, A],
   libs: { GatewayVM },
 });
@@ -42,14 +42,14 @@ await foundry.shutdown();
 console.log(new Date());
 console.log(report);
 
-// 2024-10-04T02:04:50.033Z
+// 2024-10-08T03:37:34.275Z
 // {
-//   GatewayVM: 1961570n,
+//   GatewayVM: 1879334n,
 //   EthVerifierHooks: 1295526n,
 //   ScrollVerifierHooks: 555817n,
 //   ZKSyncVerifierHooks: 325104n,
-//   LineaVerifierHooks: 819513n,
-//   OPVerifier: 1089151n,
-//   OPFaultVerifier: 1309289n,
-//   OPReverseVerifier: 1517097n,
+//   LineaVerifierHooks: 819501n,
+//   OPVerifier: 1118912n,
+//   OPFaultVerifier: 1216535n,
+//   ReverseOPVerifier: 1473514n,
 // }

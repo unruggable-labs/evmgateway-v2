@@ -1,4 +1,4 @@
-import { Contract } from 'ethers';
+import type { Contract } from 'ethers/contract';
 import { expect, test } from 'bun:test';
 
 const opts = { enableCcipRead: true };

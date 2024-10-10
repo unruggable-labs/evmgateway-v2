@@ -21,6 +21,7 @@ import { Contract } from 'ethers/contract';
 export type OPReverseConfig = {
   L1Block?: HexAddress;
   //storageSlot?: bigint;
+  commitStep?: number;
 };
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/L2/L1Block.sol
@@ -29,7 +30,7 @@ export type OPReverseConfig = {
 const SLOT_NUMBER = 0n;
 const SLOT_HASH = 2n;
 
-export type OPReverseCommit = RollupCommit<EthProver> & {
+export type ReverseOPCommit = RollupCommit<EthProver> & {
   readonly rlpEncodedL1Block: HexString;
   readonly rlpEncodedL2Block: HexString;
   readonly accountProof: EncodedProof;
@@ -46,7 +47,7 @@ const L1Block = '0x4200000000000000000000000000000000000015'; // default deploym
 // either rename chain1/chain2 to chainCall/chainData
 // or add direction: 1=>2 or 2=>1
 
-export class OPReverseRollup extends AbstractRollup<OPReverseCommit> {
+export class ReverseOPRollup extends AbstractRollup<ReverseOPCommit> {
   // https://docs.optimism.io/chain/addresses#op-mainnet-l2
   static readonly mainnetConfig: RollupDeployment<OPReverseConfig> = {
     chain1: CHAINS.MAINNET,
@@ -59,6 +60,7 @@ export class OPReverseRollup extends AbstractRollup<OPReverseCommit> {
   };
 
   readonly L1Block: Contract;
+  readonly commitStep;
   //readonly storageSlot: bigint; // using const SLOT_* instead
   constructor(providers: ProviderPair, config: OPReverseConfig) {
     super(providers);
@@ -68,8 +70,12 @@ export class OPReverseRollup extends AbstractRollup<OPReverseCommit> {
       L1_BLOCK_ABI,
       this.provider2
     );
+    this.commitStep = BigInt(config.commitStep ?? 1);
   }
 
+  private align(index: bigint) {
+    return index - (index % this.commitStep);
+  }
   async findL2Block(l1BlockNumber: bigint) {
     let b = (await this.provider2.getBlockNumber()) + 1;
     let a = Math.max(0, b - EVM_BLOCKHASH_DEPTH);
@@ -91,17 +97,19 @@ export class OPReverseRollup extends AbstractRollup<OPReverseCommit> {
     throw new Error(`unable to find block: ${l1BlockNumber}`);
   }
 
-  override fetchLatestCommitIndex(): Promise<bigint> {
-    return this.L1Block.number({ blockTag: this.latestBlockTag });
+  override async fetchLatestCommitIndex(): Promise<bigint> {
+    return this.align(
+      await this.L1Block.number({ blockTag: this.latestBlockTag })
+    );
   }
   protected override async _fetchParentCommitIndex(
-    commit: OPReverseCommit
+    commit: ReverseOPCommit
   ): Promise<bigint> {
-    return commit.index - 1n;
+    return this.align(commit.index - 1n);
   }
   protected override async _fetchCommit(
     index: bigint
-  ): Promise<OPReverseCommit> {
+  ): Promise<ReverseOPCommit> {
     const prover = new EthProver(this.provider1, index);
     const prover2 = new EthProver(
       this.provider2,
@@ -125,7 +133,7 @@ export class OPReverseRollup extends AbstractRollup<OPReverseCommit> {
   }
 
   override encodeWitness(
-    commit: OPReverseCommit,
+    commit: ReverseOPCommit,
     proofSeq: ProofSequence
   ): HexString {
     return ABI_CODER.encode(

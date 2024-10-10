@@ -1,8 +1,9 @@
 import { NitroRollup } from '../../src/nitro/NitroRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = NitroRollup.arb1MainnetConfig;
-const rollup = new NitroRollup(createProviderPair(config), config);
+const rollup = new NitroRollup(createProviderPair(USER_CONFIG, config), config);
 
 console.log({
   L2Rollup: rollup.L2Rollup.target,

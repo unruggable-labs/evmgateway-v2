@@ -1,6 +1,6 @@
 import type { Chain } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
-import { RPC_INFO, providerURL } from './providers.js';
+import { RPC_INFO, providerURL } from '../src/providers.js';
 
 const usingPublic: Chain[] = [];
 const leftover = new Set<Chain>(Object.values(CHAINS));

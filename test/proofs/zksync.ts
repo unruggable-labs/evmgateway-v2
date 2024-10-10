@@ -1,8 +1,12 @@
 import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
-import { createProviderPair } from '../../test/providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = ZKSyncRollup.mainnetConfig;
-const rollup = new ZKSyncRollup(createProviderPair(config), config);
+const rollup = new ZKSyncRollup(
+  createProviderPair(USER_CONFIG, config),
+  config
+);
 
 rollup.provider2.on('debug', (e) => {
   if (e.action === 'sendRpcPayload') {

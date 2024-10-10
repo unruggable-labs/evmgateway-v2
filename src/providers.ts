@@ -1,5 +1,11 @@
-import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
-import { CHAINS } from '../src/chains.js';
+import type {
+  Chain,
+  ChainPair,
+  Provider,
+  ProviderPair,
+  UserConfig,
+} from './types.js';
+import { CHAINS } from './chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { JsonRpcProvider } from 'ethers/providers';
 
@@ -249,15 +255,15 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
   ).map((x) => [x.chain, x])
 );
 
-function decideProvider(chain: Chain) {
+function decideProvider(userConfig: UserConfig, chain: Chain) {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown provider: ${chain}`);
   // 20240830: so far, alchemy has the best support
   let apiKey;
   if (
     info.alchemy &&
-    (apiKey = process.env.ALCHEMY_KEY) &&
-    (!info.alchemyPremium || !!process.env.ALCHEMY_PREMIUM)
+    (apiKey = userConfig.ALCHEMY_KEY) &&
+    (!info.alchemyPremium || !!userConfig.ALCHEMY_PREMIUM)
   ) {
     return {
       info,
@@ -266,7 +272,7 @@ function decideProvider(chain: Chain) {
       apiKey,
     };
   }
-  if (info.infura && (apiKey = process.env.INFURA_KEY)) {
+  if (info.infura && (apiKey = userConfig.INFURA_KEY)) {
     return {
       info,
       type: 'infura',
@@ -274,7 +280,7 @@ function decideProvider(chain: Chain) {
       apiKey,
     };
   }
-  if (info.ankr && (apiKey = process.env.ANKR_KEY)) {
+  if (info.ankr && (apiKey = userConfig.ANKR_KEY)) {
     return {
       info,
       type: 'ankr',
@@ -285,11 +291,11 @@ function decideProvider(chain: Chain) {
   return { info, type: 'public', url: info.rpc };
 }
 
-export function providerURL(chain: Chain): string {
-  return decideProvider(chain).url;
+export function providerURL(userConfig: UserConfig, chain: Chain): string {
+  return decideProvider(userConfig, chain).url;
 }
-export function providerType(chain: Chain): string {
-  return decideProvider(chain).type;
+export function providerType(userConfig: UserConfig, chain: Chain): string {
+  return decideProvider(userConfig, chain).type;
 }
 
 // export function chainPairName(pair: ChainPair): string {
@@ -298,8 +304,8 @@ export function providerType(chain: Chain): string {
 //   return `${a.info.name}<${a.info.chain}>${a.type}>>${b.info.name}<${b.info.chain}>${b.type}`;
 // }
 
-export function createProvider(chain: Chain): Provider {
-  const fr = new FetchRequest(providerURL(chain));
+export function createProvider(userConfig: UserConfig, chain: Chain): Provider {
+  const fr = new FetchRequest(providerURL(userConfig, chain));
   fr.timeout = 15000; // 5 minutes is too long
   //fr.setThrottleParams({ maxAttempts: 20 }); // default is 12
   return new JsonRpcProvider(fr, chain, {
@@ -308,6 +314,7 @@ export function createProvider(chain: Chain): Provider {
 }
 
 export function createProviderPair(
+  userConfig: UserConfig,
   a: Chain | ChainPair,
   b?: Chain
 ): ProviderPair {
@@ -320,7 +327,7 @@ export function createProviderPair(
     a = CHAINS.MAINNET;
   }
   return {
-    provider1: createProvider(a),
-    provider2: createProvider(b),
+    provider1: createProvider(userConfig, a),
+    provider2: createProvider(userConfig, b),
   };
 }

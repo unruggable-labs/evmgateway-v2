@@ -1,9 +1,10 @@
 import { EthProver } from '../../src/eth/EthProver.js';
 import { createProviderPair } from '../providers.js';
 import { OPRollup } from '../../src/op/OPRollup.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = OPRollup.opBNBMainnetConfig;
-const rollup = new OPRollup(createProviderPair(config), config);
+const rollup = new OPRollup(createProviderPair(USER_CONFIG, config), config);
 const index = await rollup.fetchLatestCommitIndex();
 console.log({index});
 

@@ -1,11 +1,16 @@
 import { ScrollRollup } from '../../src/scroll/ScrollRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = ScrollRollup.mainnetConfig;
-const rollup = await ScrollRollup.create(createProviderPair(config), config);
+const rollup = new ScrollRollup(
+  createProviderPair(USER_CONFIG, config),
+  config
+);
 
 console.log({
-  CommitmentVerifier: rollup.CommitmentVerifier.target,
+  ScrollChain: rollup.ScrollChain.target,
+  poseidon: rollup.poseidon,
   apiURL: rollup.apiURL,
   defaultWindow: rollup.defaultWindow,
 });

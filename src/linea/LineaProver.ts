@@ -94,7 +94,7 @@ export class LineaProver extends BlockProver {
       this.proofLRU.touch(target);
     if (!accountProof) {
       // missing account proof, so block it
-      this.proofLRU.setPending(
+      this.proofLRU.setFuture(
         target,
         promise.then(() => accountProof)
       );
@@ -106,7 +106,7 @@ export class LineaProver extends BlockProver {
         const p = this.proofLRU.touch(key);
         if (!p) {
           // missing storage proof, so block it
-          this.proofLRU.setPending(
+          this.proofLRU.setFuture(
             key,
             promise.then(() => storageProofs[i])
           );

@@ -1,6 +1,7 @@
 {
   "name": "@unruggable/gateways",
-  "version": "0.1.0",
+  "version": "0.1.2-dev.7",
+  "description": "Trustless Ethereum Multichain Gateway",
   "publishConfig": {
     "access": "public"
   },
@@ -8,22 +9,26 @@
     "ethereum",
     "evm",
     "gateway",
+    "rollup",
+    "multichain",
     "ccip",
     "proof",
+    "prover",
+    "verifier",
     "unruggable"
   ],
   "type": "module",
   "scripts": {
     "check": "tsc -p . --noEmit",
     "forge": "forge build --force",
-    "serve": "bun test/serve.ts",
+    "serve": "bun scripts/serve-bun.ts",
     "test": "IS_CI=1 bun test --timeout 25000",
     "test-all": "bun test --timeout 25000",
-    "test-components": "bun test/opcodes.ts && bun test test/components/* --timeout 25000",
+    "test-components": "bun scripts/opcodes.ts && bun test test/components/* --timeout 25000",
     "test-gateways": "bun test test/gateway/* --timeout 25000",
-    "test-fast": "bun run forge && bun run check && bun run lint && bun run test-components && bun test test/gateway/op.test.ts && bun test test/gateway/reverse-op.test.ts",
+    "test-fast": "bun run check && bun run lint && bun run forge && bun run test-components && bun test test/gateway/op.test.ts && bun test test/gateway/reverse-op.test.ts",
     "lint": "eslint . --ext .ts",
-    "build": "bun build/dist.ts",
+    "build": "bun scripts/build-dist.ts",
     "loc": "rg -c '^' -g 'src/**/*.ts' -g 'test/**/*.ts' --no-filename | jq -s 'add'"
   },
   "sideEffects": false,
@@ -54,6 +59,7 @@
   },
   "dependencies": {
     "@resolverworks/ezccip": "^0.0.15",
+    "@whatwg-node/server": "^0.9.49",
     "ethers": "^6.13.3"
   },
   "peerDependencies": {

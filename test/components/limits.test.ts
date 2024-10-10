@@ -1,4 +1,4 @@
-import { GatewayRequest } from '../../src/vm.js';
+import { GatewayProgram, GatewayRequest } from '../../src/vm.js';
 import { Foundry } from '@adraffy/blocksmith';
 import { keccak256 } from 'ethers/crypto';
 import { EthProver } from '../../src/eth/EthProver.js';
@@ -88,14 +88,16 @@ describe('limits', async () => {
 
   test('max assemble bytes', async () => {
     const prover = await EthProver.latest(foundry.provider);
-    prover.maxAssembleBytes = 1024;
-    function double(x: GatewayRequest, n = 1) {
-      while (n--) x = x.dup().concat();
-      return x;
+    const N = 5;
+    prover.maxAssembleBytes = 32 << N;
+    const req = new GatewayRequest();
+    req.push(1); // 32 bytes
+    function double() {
+      req.dup().concat();
     }
-    const req = double(new GatewayRequest().push(1), 5);
+    for (let i = 0; i < N; i++) double();
     await exec(prover, req);
-    double(req); // one more
+    double(); // one more
     expect(exec(prover, req)).rejects.toThrow(/^too many bytes:/);
   });
 
@@ -110,5 +112,17 @@ describe('limits', async () => {
     await exec(prover, req);
     req.setSlot(0).read(); // one more
     expect(exec(prover, req)).rejects.toThrow(/^too many proofs:/);
+  });
+
+  test('max eval depth', async () => {
+    const prover = await EthProver.latest(foundry.provider);
+    const N = (prover.maxEvalDepth = 10);
+    function nest(n: number) {
+      let p = new GatewayProgram().push(1).setOutput(0);
+      while (n-- > 1) p = new GatewayProgram().pushProgram(p).eval();
+      return new GatewayRequest(1).pushProgram(p).eval();
+    }
+    await exec(prover, nest(N));
+    expect(exec(prover, nest(N + 1))).rejects.toThrow('max eval depth');
   });
 });

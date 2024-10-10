@@ -1,8 +1,9 @@
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { createProviderPair } from '../../test/providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = LineaRollup.mainnetConfig;
-const rollup = new LineaRollup(createProviderPair(config), config);
+const rollup = new LineaRollup(createProviderPair(USER_CONFIG, config), config);
 
 rollup.provider2.on('debug', (e) => {
   if (e.action === 'sendRpcPayload') {

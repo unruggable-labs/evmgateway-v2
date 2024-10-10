@@ -2,7 +2,7 @@
 
 import { ethers } from 'ethers';
 import { CHAINS } from '../../../src/chains.js';
-import { createProvider } from '../../providers.js';
+import { createProvider } from '../../../src/providers.js';
 import { ABI_CODER } from '../../../src/utils.js';
 import { HexString } from '@resolverworks/ezccip';
 

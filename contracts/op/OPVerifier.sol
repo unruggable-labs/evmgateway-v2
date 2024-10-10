@@ -14,18 +14,31 @@ interface IL2OutputOracle {
 
 contract OPVerifier is AbstractVerifier {
     IL2OutputOracle immutable _oracle;
+    uint256 immutable _minAgeSec;
 
     constructor(
         string[] memory urls,
         uint256 window,
         IVerifierHooks hooks,
-        IL2OutputOracle oracle
+        IL2OutputOracle oracle,
+        uint256 minAgeSec
     ) AbstractVerifier(urls, window, hooks) {
         _oracle = oracle;
+        _minAgeSec = minAgeSec;
     }
 
     function getLatestContext() external view returns (bytes memory) {
-        return abi.encode(_oracle.latestOutputIndex());
+        uint256 i = _oracle.latestOutputIndex();
+        uint256 t = block.timestamp - _minAgeSec;
+        while (true) {
+            Types.OutputProposal memory output = _oracle.getL2Output(i);
+            if (output.timestamp <= t) {
+                return abi.encode(i);
+            }
+            if (i == 0) break;
+            --i;
+        }
+		revert('OP: no output');
     }
 
     struct GatewayProof {

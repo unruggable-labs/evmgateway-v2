@@ -10,7 +10,7 @@ interface IL1Block {
     function number() external view returns (uint256);
 }
 
-contract OPReverseVerifier is AbstractVerifier {
+contract ReverseOPVerifier is AbstractVerifier {
     uint256 immutable SLOT_HASH = 2;
     IL1Block immutable _l1Block;
 

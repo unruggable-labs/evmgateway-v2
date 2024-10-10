@@ -1,8 +1,12 @@
 import { PolygonPoSRollup } from '../../src/polygon/PolygonPoSRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = PolygonPoSRollup.mainnetConfig;
-const rollup = new PolygonPoSRollup(createProviderPair(config), config);
+const rollup = new PolygonPoSRollup(
+  createProviderPair(USER_CONFIG, config),
+  config
+);
 
 console.log({
   RootChain: rollup.RootChain.target,

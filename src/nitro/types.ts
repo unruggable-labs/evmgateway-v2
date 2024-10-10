@@ -3,6 +3,7 @@ import { Interface } from 'ethers/abi';
 // https://github.com/OffchainLabs/nitro-contracts/blob/main/src/rollup/RollupCore.sol
 export const ROLLUP_ABI = new Interface([
   `function latestConfirmed() view returns (uint64)`,
+  `function latestNodeCreated() view returns (uint64)`,
   `function getNode(uint64 nodeNum) view returns (tuple(
     bytes32 stateHash,
     bytes32 challengeHash,

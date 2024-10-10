@@ -13,15 +13,9 @@ import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
 import { keccak256 } from 'ethers/crypto';
 import { solidityPackedKeccak256 } from 'ethers/hash';
-import {
-  hexlify,
-  dataSlice,
-  concat,
-  getBytes,
-  toUtf8Bytes,
-} from 'ethers/utils';
+import { dataSlice, concat, getBytes, toUtf8Bytes } from 'ethers/utils';
 import { unwrap, Wrapped, type Unwrappable } from './wrap.js';
-import { ABI_CODER, fetchBlock, toUnpaddedHex, toPaddedHex } from './utils.js';
+import { fetchBlock, toUnpaddedHex, toPaddedHex } from './utils.js';
 import { CachedMap, LRU } from './cached.js';
 import { GATEWAY_OP as OP } from './ops.js';
 import { ProgramReader } from './reader.js';
@@ -40,33 +34,34 @@ async function peekSize(value: HexFuture) {
 }
 
 // EVAL_LOOP flags
-// the following should be equivalent to GatewayProtocol.sol
-const STOP_ON_SUCCESS = 1;
-const STOP_ON_FAILURE = 2;
-const ACQUIRE_STATE = 4;
+// the following should be equivalent to GatewayRequest.sol
+const STOP_ON_SUCCESS = 1 << 0;
+const STOP_ON_FAILURE = 1 << 1;
+const ACQUIRE_STATE = 1 << 2;
+const KEEP_ARGS = 1 << 3;
 
 const EXIT = {
   SUCCESS: 0, // do we need this?
   NOT_A_CONTRACT: 254,
-  NOT_NONZERO: 253,
+  IS_ZERO: 253,
 };
 
 function isZeros(hex: HexString) {
   return /^0x0*$/.test(hex);
 }
-function uint256FromHex(hex: string) {
+function uint256FromHex(hex: HexString) {
   // the following should be equivalent to:
-  // ProofUtils.uint256FromBytes(hex)
+  // GatewayVM.stackAsUint256()
   return hex === '0x' ? 0n : BigInt(hex.slice(0, 66));
 }
-function numberFromHex(hex: string) {
+function numberFromHex(hex: HexString) {
   const u = uint256FromHex(hex);
   if (u > 0xffffff) throw new Error('numeric overflow');
   return Number(u);
 }
-function addressFromHex(hex: string) {
+function addressFromHex(hex: HexString) {
   // the following should be equivalent to:
-  // address(uint160(ProofUtils.uint256FromBytes(hex)))
+  // address(uint160(GatewayVM.stackAsUint256()))
   return (
     '0x' +
     (hex.length >= 66
@@ -91,12 +86,9 @@ export function solidityFollowSlot(slot: BigNumberish, key: BytesLike) {
 export class GatewayProgram {
   static readonly Opcode = OP;
   static readonly Exitcode = EXIT;
-  constructor(
-    readonly ops: number[] = [],
-    readonly inputs: string[] = []
-  ) {}
+  constructor(readonly ops: number[] = []) {}
   clone() {
-    return new GatewayProgram(this.ops.slice(), this.inputs.slice());
+    return new GatewayProgram(this.ops.slice());
   }
   op(key: keyof typeof OP) {
     return this.addByte(OP[key]); // experimental
@@ -106,31 +98,20 @@ export class GatewayProgram {
     this.ops.push(x);
     return this;
   }
-  protected addSmallBytes(v: Uint8Array) {
-    this.addByte(v.length);
+  protected addBytes(v: Uint8Array) {
     this.ops.push(...v);
     return this;
   }
-  defineInput(x: BigNumberish | boolean) {
-    return this.defineInputBytes(toPaddedHex(x));
-  }
-  defineInputStr(s: string) {
-    return this.defineInputBytes(toUtf8Bytes(s));
-  }
-  defineInputBytes(v: BytesLike) {
-    this.inputs.push(hexlify(v));
-    return this.inputs.length - 1;
-  }
   toTuple() {
-    return [Uint8Array.from(this.ops), this.inputs] as const;
+    return [this.encode()];
   }
   encode() {
-    return ABI_CODER.encode(['bytes', 'bytes[]'], this.toTuple());
+    return Uint8Array.from(this.ops);
   }
   debug(label = '') {
-    return this.addByte(OP.DEBUG).addSmallBytes(toUtf8Bytes(label));
+    const v = toUtf8Bytes(label);
+    return this.addByte(OP.DEBUG).addByte(v.length).addBytes(v);
   }
-
   read(n = 1) {
     return n == 1
       ? this.addByte(OP.READ_SLOT)
@@ -154,7 +135,10 @@ export class GatewayProgram {
   }
 
   setOutput(i: number) {
-    return this.push(i).addByte(OP.SET_OUTPUT);
+    return this.push(i).output();
+  }
+  output() {
+    return this.addByte(OP.SET_OUTPUT);
   }
   eval() {
     return this.addByte(OP.EVAL_INLINE);
@@ -164,6 +148,7 @@ export class GatewayProgram {
       success?: boolean;
       failure?: boolean;
       acquire?: boolean;
+      keep?: boolean;
       count?: number;
     } = {}
   ) {
@@ -171,6 +156,7 @@ export class GatewayProgram {
     if (opts.success) flags |= STOP_ON_SUCCESS;
     if (opts.failure) flags |= STOP_ON_FAILURE;
     if (opts.acquire) flags |= ACQUIRE_STATE;
+    if (opts.keep) flags |= KEEP_ARGS;
     // TODO: add recursion limit
     // TODO: add can modify output
     return this.push(opts.count ?? 255) // this should be >= MAX_STACK
@@ -186,14 +172,12 @@ export class GatewayProgram {
   }
   addSlot() {
     return this.addByte(OP.SLOT_ADD);
-    // same as: this.pushSlot().add().slot();
   }
   slot() {
     return this.addByte(OP.SLOT);
   }
   follow() {
     return this.addByte(OP.SLOT_FOLLOW);
-    // same as: this.pushSlot().concat().keccak().slot();
   }
   followIndex() {
     return this.pushSlot().keccak().slot().addSlot();
@@ -219,8 +203,8 @@ export class GatewayProgram {
   pushOutput(i: number) {
     return this.push(i).addByte(OP.PUSH_OUTPUT);
   }
-  pushInput(i: number) {
-    return this.push(i).addByte(OP.PUSH_INPUT);
+  pushStack(i: number) {
+    return this.push(i).addByte(OP.PUSH_STACK);
   }
   push(x: BigNumberish | boolean) {
     const i = BigInt.asUintN(256, BigInt(x));
@@ -235,9 +219,7 @@ export class GatewayProgram {
   }
   pushBytes(v: BytesLike) {
     const u = getBytes(v);
-    return u.length < 256
-      ? this.addByte(OP.PUSH_BYTES).addSmallBytes(u)
-      : this.pushInput(this.defineInputBytes(u));
+    return this.addByte(OP.PUSH_BYTES).push(u.length).addBytes(u);
   }
   pushProgram(program: GatewayProgram) {
     return this.pushBytes(program.encode());
@@ -268,11 +250,11 @@ export class GatewayProgram {
   plus() {
     return this.addByte(OP.PLUS);
   }
-  complement() {
-    return this.not().push(1).plus(); // twos complement
+  twosComplement() {
+    return this.not().push(1).plus();
   }
   subtract() {
-    return this.complement().plus();
+    return this.twosComplement().plus();
   }
   times() {
     return this.addByte(OP.TIMES);
@@ -292,16 +274,16 @@ export class GatewayProgram {
   xor() {
     return this.addByte(OP.XOR);
   }
-  isNonzero() {
-    return this.addByte(OP.NONZERO);
+  isZero() {
+    return this.addByte(OP.IS_ZERO);
   }
   not() {
     return this.addByte(OP.NOT);
   }
-  shl(shift: number | bigint) {
+  shl(shift: BigNumberish) {
     return this.push(shift).addByte(OP.SHIFT_LEFT);
   }
-  shr(shift: number | bigint) {
+  shr(shift: BigNumberish) {
     return this.push(shift).addByte(OP.SHIFT_RIGHT);
   }
   eq() {
@@ -313,17 +295,14 @@ export class GatewayProgram {
   gt() {
     return this.addByte(OP.GT);
   }
-  flip() {
-    return this.push(0).eq();
-  }
   neq() {
-    return this.eq().flip();
+    return this.eq().isZero();
   }
   lte() {
-    return this.gt().flip();
+    return this.gt().isZero();
   }
   gte() {
-    return this.lt().flip();
+    return this.lt().isZero();
   }
   dup2() {
     // [a, b] => [a, b, a] => [a, b, a, b]
@@ -350,7 +329,6 @@ export class GatewayRequest extends GatewayProgram {
     const temp = new GatewayRequest();
     temp.ops.length = 0;
     temp.ops.push(...this.ops);
-    temp.inputs.push(...this.inputs);
     return temp;
   }
   get outputCount() {
@@ -427,9 +405,13 @@ export class GatewayVM {
     if (i >= this.outputs.length) throw new Error(`invalid output index: ${i}`);
     return i;
   }
+  checkStackIndex(i: number) {
+    if (i < 0) throw new Error('stack underflow');
+    if (i >= this.stack.length) throw new Error('stack overflow');
+    return i;
+  }
   checkBack(back: number) {
-    if (back >= this.stack.length) throw new Error('back overflow');
-    return this.stack.length - 1 - back;
+    return this.checkStackIndex(this.stack.length - 1 - back);
   }
   resolveOutputs() {
     return Promise.all(this.outputs.map(unwrap));
@@ -510,6 +492,8 @@ export abstract class AbstractProver {
   maxProvableBytes = 64 << 5; // max = 32 * proof count
   // maximum bytes from concat(), slice()
   maxAssembleBytes = 1 << 20; // max = server memory
+  // maximum recursion depth
+  maxEvalDepth = 5; // max = unlimited
   // use getCode() / getStorage() if no proof is cached yet
   fast = true;
 
@@ -554,18 +538,23 @@ export abstract class AbstractProver {
   }
 
   // machine interface
-  async evalDecoded(ops: BytesLike, inputs: HexString[]) {
-    return this.evalReader(new ProgramReader(getBytes(ops), inputs));
+  async evalDecoded(v: BytesLike) {
+    return this.evalReader(ProgramReader.fromEncoded(v));
   }
   async evalRequest(req: GatewayRequest) {
     return this.evalReader(ProgramReader.fromProgram(req));
   }
   async evalReader(reader: ProgramReader) {
     const vm = GatewayVM.create(reader.readByte(), this.maxStackSize);
-    await this.eval(reader, vm);
+    await this.eval(reader, vm, 0);
     return vm;
   }
-  private async eval(reader: ProgramReader, vm: GatewayVM): Promise<void> {
+  private async eval(
+    reader: ProgramReader,
+    vm: GatewayVM,
+    depth: number
+  ): Promise<void> {
+    if (depth > this.maxEvalDepth) throw new Error('max eval depth');
     while (reader.remaining) {
       const op = reader.readByte();
       if (op <= 32) {
@@ -612,16 +601,16 @@ export abstract class AbstractProver {
           vm.outputs[vm.checkOutputIndex(await vm.popNumber())] = vm.pop();
           continue;
         }
-        case OP.PUSH_INPUT: {
-          vm.push(reader.inputAt(await vm.popNumber()));
-          continue;
-        }
         case OP.PUSH_OUTPUT: {
           vm.push(vm.outputs[vm.checkOutputIndex(await vm.popNumber())]);
           continue;
         }
         case OP.PUSH_BYTES: {
-          vm.push(reader.readSmallBytes());
+          vm.push(
+            reader.readBytes(
+              checkSize(reader.readNumber(), this.maxAssembleBytes)
+            )
+          );
           continue;
         }
         case OP.PUSH_SLOT: {
@@ -634,6 +623,10 @@ export abstract class AbstractProver {
         }
         case OP.PUSH_STACK_SIZE: {
           vm.push(toPaddedHex(vm.stack.length));
+          continue;
+        }
+        case OP.PUSH_STACK: {
+          vm.push(vm.stack[vm.checkStackIndex(await vm.popNumber())]);
           continue;
         }
         case OP.DUP: {
@@ -731,14 +724,14 @@ export abstract class AbstractProver {
         }
         case OP.REQ_NONZERO: {
           if (isZeros(await unwrap(vm.stack[vm.checkBack(0)]))) {
-            vm.exitCode = EXIT.NOT_NONZERO;
+            vm.exitCode = EXIT.IS_ZERO;
             return;
           }
           continue;
         }
         case OP.EVAL_INLINE: {
           const program = ProgramReader.fromEncoded(await unwrap(vm.pop()));
-          await this.eval(program, vm);
+          await this.eval(program, vm, depth + 1);
           if (vm.exitCode) return;
           continue;
         }
@@ -753,24 +746,26 @@ export abstract class AbstractProver {
             vm.needs,
             vm.targets
           );
-          let count = numberFromHex(n);
-          for (; count && vm.stack.length; count--) {
+          let count = Math.min(numberFromHex(n), vm.stack.length);
+          while (count) {
+            --count;
             vm2.target = vm.target;
             vm2.slot = vm.slot;
             vm2.stack = [vm.pop()];
             vm2.exitCode = 0;
             program.pos = 0;
-            await this.eval(program, vm2);
+            await this.eval(program, vm2, depth + 1);
             if (flags & (vm2.exitCode ? STOP_ON_FAILURE : STOP_ON_SUCCESS)) {
+              if (~flags & KEEP_ARGS) {
+                vm.popSlice(count);
+              }
+              if (flags & ACQUIRE_STATE) {
+                vm.target = vm2.target;
+                vm.slot = vm2.slot;
+                vm.stack.push(...vm2.stack);
+              }
               break;
             }
-          }
-          if (flags & ACQUIRE_STATE) {
-            vm.target = vm2.target;
-            vm.slot = vm2.slot;
-            vm.stack = vm2.stack;
-          } else if (count) {
-            vm.stack.splice(-count);
           }
           continue;
         }
@@ -828,10 +823,6 @@ export abstract class AbstractProver {
           await vm.binaryOp((a, b) => a + b);
           continue;
         }
-        // case OP.SUBTRACT: {
-        //   await vm.binaryOp((a, b) => a - b);
-        //   continue;
-        // }
         case OP.TIMES: {
           await vm.binaryOp((a, b) => a * b);
           continue;
@@ -876,8 +867,8 @@ export abstract class AbstractProver {
           await vm.binaryOp((a, b) => a > b);
           continue;
         }
-        case OP.NONZERO: {
-          vm.push(toPaddedHex(!isZeros(await unwrap(vm.pop()))));
+        case OP.IS_ZERO: {
+          vm.push(toPaddedHex(isZeros(await unwrap(vm.pop()))));
           continue;
         }
         case OP.NOT: {
@@ -959,9 +950,10 @@ export abstract class BlockProver extends AbstractProver {
   // absolutely disgusting typescript
   static async latest<T extends InstanceType<typeof BlockProver>>(
     this: new (...a: ConstructorParameters<typeof BlockProver>) => T,
-    provider: Provider
+    provider: Provider,
+    offset = 0
   ) {
-    return new this(provider, await provider.getBlockNumber());
+    return new this(provider, (await provider.getBlockNumber()) - offset);
   }
   readonly block: HexString;
   constructor(provider: Provider, block: BigNumberish) {

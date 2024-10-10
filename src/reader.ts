@@ -1,6 +1,5 @@
-import type { HexString } from './types.js';
+import type { BytesLike } from './types.js';
 import { getBytes, hexlify, toUtf8String } from 'ethers/utils';
-import { ABI_CODER } from './utils.js';
 import { GatewayProgram, GatewayRequest } from './vm.js';
 import { GATEWAY_OP as OP } from './ops.js';
 
@@ -30,26 +29,18 @@ export class ProgramReader {
     return actions;
   }
   static fromProgram(program: GatewayProgram) {
-    return new this(Uint8Array.from(program.ops), program.inputs.slice());
+    return new this(Uint8Array.from(program.ops));
   }
-  static fromEncoded(hex: HexString) {
-    const [ops, inputs] = ABI_CODER.decode(['bytes', 'bytes[]'], hex);
-    return new this(getBytes(ops), [...inputs]);
+  static fromEncoded(v: BytesLike) {
+    return new this(getBytes(v));
   }
   pos = 0;
-  constructor(
-    readonly ops: Uint8Array,
-    readonly inputs: HexString[]
-  ) {}
+  constructor(readonly ops: Uint8Array) {}
   get remaining() {
     return this.ops.length - this.pos;
   }
   checkRead(n: number) {
     if (this.pos + n > this.ops.length) throw new Error('reader overflow');
-  }
-  inputAt(i: number) {
-    if (i >= this.inputs.length) throw new Error(`invalid input index: ${i}`);
-    return this.inputs[i];
   }
   readByte() {
     this.checkRead(1);
@@ -59,8 +50,9 @@ export class ProgramReader {
     this.checkRead(n);
     return hexlify(this.ops.subarray(this.pos, (this.pos += n)));
   }
-  readSmallBytes() {
-    return this.readBytes(this.readByte());
+  readNumber() {
+    const n = this.readByte();
+    return n ? parseInt(this.readBytes(n)) : 0;
   }
   readSmallStr() {
     return toUtf8String(this.readBytes(this.readByte()));
@@ -103,7 +95,7 @@ export class ProgramReader {
       case OP.PUSH_32:
         return { bytes: this.readBytes(op) };
       case OP.PUSH_BYTES:
-        return { bytes: this.readSmallBytes() };
+        return { bytes: this.readBytes(this.readNumber()) };
       case OP.EVAL_LOOP:
         return { flags: this.readByte() };
       case OP.DEBUG:

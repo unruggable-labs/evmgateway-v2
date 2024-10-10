@@ -1,21 +1,22 @@
 import { Foundry } from '@adraffy/blocksmith';
 import { serve } from '@resolverworks/ezccip';
 import { ethers } from 'ethers';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
 import { LineaGatewayV1 } from '../../src/linea/LineaGatewayV1.js';
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
 import { encodeShortString } from '../utils.js';
 import { toPaddedHex } from '../../src/utils.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 // backend for linea.eth / https://names.linea.build/
 
 const config = LineaRollup.mainnetConfig;
-const rollup = new LineaRollup(createProviderPair(config), config);
+const rollup = new LineaRollup(createProviderPair(USER_CONFIG, config), config);
 const gateway = new LineaGatewayV1(rollup);
 const ccip = await serve(gateway, { protocol: 'raw' });
 
 const foundry = await Foundry.launch({
-  fork: providerURL(config.chain1),
+  fork: providerURL(USER_CONFIG, config.chain1),
   infoLog: false,
 });
 const VERIFIER = '0x2aD1A39a3b616FB11ac5DB290061A0A5C09771f3';

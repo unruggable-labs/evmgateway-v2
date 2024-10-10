@@ -4,7 +4,7 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 
 const base_dir = fileURLToPath(new URL('../', import.meta.url));
 
-const branch = 'v1.9.1';
+const branch = 'v1.9.3'; // checked on 20241009
 const src_url = `https://raw.githubusercontent.com/ethereum-optimism/optimism/${branch}/packages/contracts-bedrock/`;
 
 // clean output directory

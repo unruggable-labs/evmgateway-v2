@@ -77,15 +77,12 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
     // find the most recent post from poster
     // stop searching when earlier than poster deployment
     // (otherwise we scan back to genesis)
-    for (
-      let i = l2BlockNumber;
-      i > this.poster.blockNumberStart;
-      i -= this.getLogsStepSize
-    ) {
+    const step = BigInt(this.getLogsStepSize);
+    for (let i = l2BlockNumber; i > this.poster.blockNumberStart; i -= step) {
       const logs = await this.provider2.getLogs({
         address: this.poster.address,
         topics: [this.poster.topicHash],
-        fromBlock: i < this.getLogsStepSize ? 0n : i - this.getLogsStepSize,
+        fromBlock: i < step ? 0n : i - step,
         toBlock: i - 1n,
       });
       if (logs.length) return logs[logs.length - 1];

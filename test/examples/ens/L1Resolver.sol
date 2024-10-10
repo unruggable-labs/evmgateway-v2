@@ -73,15 +73,15 @@ contract L1Resolver is GatewayFetchTarget, IExtendedResolver, IERC165 {
     ) external pure returns (bytes memory) {
         bytes memory value = values[0];
         if (bytes4(data) == SEL_addr60) {
-           return abi.encode(address(bytes20(value)));
+            return abi.encode(address(bytes20(value)));
         } else {
-           return abi.encode(value);
+            return abi.encode(value);
         }
     }
 
-	// this is just provided as an example w/o adding another dependency
-	// use the following instead:
-	// https://github.com/ensdomains/ens-contracts/blob/staging/contracts/utils/BytesUtils.sol
+    // this is just provided as an example w/o adding another dependency
+    // use the following instead:
+    // https://github.com/ensdomains/ens-contracts/blob/staging/contracts/utils/BytesUtils.sol
     function leadingLabelhash(
         bytes calldata name
     ) internal pure returns (bytes32) {

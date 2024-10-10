@@ -5,11 +5,8 @@ import { Contract } from 'ethers/contract';
 import { CHAINS } from '../chains.js';
 import { AbstractOPRollup, type OPCommit } from './AbstractOPRollup.js';
 
-// should this be named L2OutputOracleProxy?
-// most call it L2OutputOracle (meaning the Proxy)
-// but some list both for some stupid reason
 export type OPConfig = {
-  L2OutputOracle: HexAddress;
+  L2OutputOracle: HexAddress; // sometimes called L2OutputOracleProxy
 };
 
 export class OPRollup extends AbstractOPRollup {

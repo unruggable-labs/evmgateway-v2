@@ -1,7 +1,8 @@
 import {
-  AbstractRollupV1,
   type RollupCommit,
   type RollupDeployment,
+  type RollupWitnessV1,
+  AbstractRollup,
 } from '../rollup.js';
 import type {
   HexAddress,
@@ -16,21 +17,26 @@ import { ZeroHash } from 'ethers/constants';
 import { Contract, EventLog } from 'ethers/contract';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { ABI_CODER } from '../utils.js';
+import { ABI_CODER, fetchBlock, MAINNET_BLOCK_SEC } from '../utils.js';
 import { encodeRlpBlock } from '../rlp.js';
 
 // https://docs.arbitrum.io/how-arbitrum-works/inside-arbitrum-nitro#the-rollup-chain
 
 export type NitroConfig = {
   L2Rollup: HexAddress;
+  minAgeBlocks?: number;
 };
 
 export type NitroCommit = RollupCommit<EthProver> & {
   readonly sendRoot: HexString;
   readonly rlpEncodedBlock: HexString;
+  readonly prevNum: bigint;
 };
 
-export class NitroRollup extends AbstractRollupV1<NitroCommit> {
+export class NitroRollup
+  extends AbstractRollup<NitroCommit>
+  implements RollupWitnessV1<NitroCommit>
+{
   // https://docs.arbitrum.io/build-decentralized-apps/reference/useful-addresses
   static readonly arb1MainnetConfig: RollupDeployment<NitroConfig> = {
     chain1: CHAINS.MAINNET,
@@ -48,25 +54,39 @@ export class NitroRollup extends AbstractRollupV1<NitroCommit> {
     L2Rollup: '0xFb209827c58283535b744575e11953DCC4bEAD88',
   };
 
-  readonly L2Rollup: Contract;
+  readonly L2Rollup;
+  readonly minAgeBlocks;
   constructor(providers: ProviderPair, config: NitroConfig) {
     super(providers);
     this.L2Rollup = new Contract(config.L2Rollup, ROLLUP_ABI, this.provider1);
+    this.minAgeBlocks = config.minAgeBlocks ?? 0;
   }
 
-  override async fetchLatestCommitIndex(): Promise<bigint> {
-    return this.L2Rollup.latestConfirmed({
-      blockTag: this.latestBlockTag,
-    });
+  async fetchLatestNode(minAgeBlocks = 0) {
+    if (minAgeBlocks) {
+      const blockInfo = await fetchBlock(this.provider1, this.latestBlockTag);
+      const blockTag = BigInt(blockInfo.number) - BigInt(minAgeBlocks);
+      return this.L2Rollup.latestNodeCreated({
+        blockTag,
+      });
+    } else {
+      return this.L2Rollup.latestConfirmed({
+        blockTag: this.latestBlockTag,
+      });
+    }
+  }
+
+  override fetchLatestCommitIndex(): Promise<bigint> {
+    return this.fetchLatestNode(this.minAgeBlocks);
   }
   protected override async _fetchParentCommitIndex(
     commit: NitroCommit
   ): Promise<bigint> {
-    const node: ABINodeTuple = await this.L2Rollup.getNode(commit.index);
-    return node.prevNum || -1n;
+    return this.minAgeBlocks ? commit.index - 1n : commit.prevNum;
   }
   protected override async _fetchCommit(index: bigint): Promise<NitroCommit> {
-    const { createdAtBlock }: ABINodeTuple = await this.L2Rollup.getNode(index);
+    const { createdAtBlock, prevNum }: ABINodeTuple =
+      await this.L2Rollup.getNode(index);
     if (!createdAtBlock) throw new Error('unknown node');
     const [event] = await this.L2Rollup.queryFilter(
       this.L2Rollup.filters.NodeCreated(index),
@@ -85,7 +105,7 @@ export class NitroRollup extends AbstractRollupV1<NitroCommit> {
     // note: block.sendRoot == sendRoot
     const rlpEncodedBlock = encodeRlpBlock(block);
     const prover = new EthProver(this.provider2, block.number);
-    return { index, prover, sendRoot, rlpEncodedBlock };
+    return { index, prover, sendRoot, rlpEncodedBlock, prevNum };
   }
   override encodeWitness(
     commit: NitroCommit,
@@ -104,10 +124,7 @@ export class NitroRollup extends AbstractRollupV1<NitroCommit> {
       ]
     );
   }
-  override encodeWitnessV1(
-    commit: NitroCommit,
-    proofSeq: ProofSequenceV1
-  ): HexString {
+  encodeWitnessV1(commit: NitroCommit, proofSeq: ProofSequenceV1): HexString {
     return ABI_CODER.encode(
       [
         'tuple(bytes32 version, bytes32 sendRoot, uint64 nodeIndex, bytes rlpEncodedBlock)',
@@ -123,6 +140,6 @@ export class NitroRollup extends AbstractRollupV1<NitroCommit> {
   override windowFromSec(sec: number): number {
     // finalization time is not on-chain
     // the delta between createdAtBlock is a sufficient proxy
-    return Math.ceil(sec / 12); // units of L1 blocks
+    return Math.ceil(sec / MAINNET_BLOCK_SEC); // units of L1 blocks
   }
 }

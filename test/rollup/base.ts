@@ -1,8 +1,9 @@
 import { OPRollup } from '../../src/op/OPRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = OPRollup.baseMainnetConfig;
-const rollup = new OPRollup(createProviderPair(config), config);
+const rollup = new OPRollup(createProviderPair(USER_CONFIG, config), config);
 
 console.log({
   L2OutputOracle: rollup.L2OutputOracle.target,

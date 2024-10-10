@@ -74,11 +74,11 @@ export class ZKEVMProver extends BlockProver {
       );
     }
   }
-  async getProofs(target: HexString, slots: bigint[] = []) {
+  async getProofs(target: HexAddress, slots: bigint[] = []) {
     // TODO: fix me
     return this.fetchProofs(target, slots);
   }
-  async fetchProofs(target: HexString, slots: bigint[] = []) {
+  async fetchProofs(target: HexAddress, slots: bigint[] = []) {
     const ps: Promise<RPCZKEVMGetProof>[] = [];
     for (let i = 0; ; ) {
       ps.push(

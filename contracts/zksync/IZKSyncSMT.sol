@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+address constant ACCOUNT_CODE_HASH = 0x0000000000000000000000000000000000008002;
+
 struct TreeEntry {
     uint256 key;
     bytes32 value;
@@ -14,5 +16,3 @@ interface IZKSyncSMT {
         address account
     ) external view returns (bytes32);
 }
-
-address constant ACCOUNT_CODE_HASH = 0x0000000000000000000000000000000000008002;

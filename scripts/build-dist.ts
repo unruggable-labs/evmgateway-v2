@@ -22,8 +22,8 @@ function log(...a: any) {
 }
 
 // save a copy of config files
-const packageOriginal = readFileSync(packageFile);
-const tsconfigOriginal = readFileSync(tsconfigFile);
+const packageOriginal = readFileSync(packageFile, { encoding: 'utf8' });
+const tsconfigOriginal = readFileSync(tsconfigFile, { encoding: 'utf8' });
 
 // ensure correct starting state
 if (pkg.type !== 'module') {
@@ -41,8 +41,8 @@ rmdirSync(distDir, { recursive: true });
 mkdirSync(distDir);
 log(`Cleaned ${distDir}`);
 
-// remove tests
-tsc.include = tsc.include.filter((x) => !`^test\b`.match(x));
+// remove tests and scripts
+tsc.include = ['src'];
 writeFileSync(tsconfigFile, JSON.stringify(tsc));
 
 // create outputs

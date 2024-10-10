@@ -24,6 +24,7 @@ library RLPReaderExt {
     }
 
     // same as: keccak256(RLPReader.readRawBytes(item))
+    // but does not allocate
     function keccak256FromRawRLP(
         RLPReader.RLPItem memory item
     ) internal pure returns (bytes32 ret) {

@@ -144,7 +144,7 @@ export class ZKSyncProver extends AbstractProver {
       const key = makeStorageKey(target, slot);
       const p = this.proofLRU.touch(key);
       if (!p) {
-        this.proofLRU.setPending(
+        this.proofLRU.setFuture(
           key,
           promise.then(() => storageProofs[i])
         );

@@ -30,7 +30,7 @@ export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
   // "limit targets" => prover.maxUniqueTargets = 1
   configure: (<T extends C>(commit: T) => void) | undefined;
   latestBlockTag: BigNumberish = 'finalized';
-  getLogsStepSize = 1000n;
+  getLogsStepSize = 1000;
   readonly provider1: Provider;
   readonly provider2: Provider;
   constructor(providers: ProviderPair) {
@@ -89,8 +89,12 @@ export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
   }
 }
 
-export abstract class AbstractRollupV1<
-  C extends RollupCommit<AbstractProver>,
-> extends AbstractRollup<C> {
-  abstract encodeWitnessV1(commit: C, proofSeq: ProofSequenceV1): HexString;
+export interface RollupWitnessV1<C extends RollupCommit<AbstractProver>> {
+  encodeWitnessV1(commit: C, proofSeq: ProofSequenceV1): HexString;
+}
+
+export function supportsV1<R extends Rollup>(
+  rollup: R
+): rollup is R & RollupWitnessV1<RollupCommitType<R>> {
+  return 'encodeWitnessV1' in rollup;
 }

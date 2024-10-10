@@ -1,16 +1,16 @@
-import type { ChainPair, HexAddress, ProviderPair } from '../../src/types.js';
-import type { Rollup, RollupCommitType } from '../../src/rollup.js';
+import type { ChainPair, HexAddress, ProviderPair } from '../src/types.js';
+import type { Rollup, RollupCommitType } from '../src/rollup.js';
 import { Foundry } from '@adraffy/blocksmith';
-import { createProvider, providerURL } from '../providers.js';
-import { chainName } from '../../src/chains.js';
+import { createProvider, providerURL } from '../src/providers.js';
+import { chainName } from '../src/chains.js';
 import { Contract } from 'ethers';
-import { GatewayRequest } from '../../src/vm.js';
-import { ABI_CODER } from '../../src/utils.js';
-import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
-import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { ScrollRollup } from '../../src/scroll/ScrollRollup.js';
-import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
-import { TaikoRollup } from '../../src/taiko/TaikoRollup.js';
+import { GatewayRequest } from '../src/vm.js';
+import { ABI_CODER } from '../src/utils.js';
+import { OPFaultRollup } from '../src/op/OPFaultRollup.js';
+import { LineaRollup } from '../src/linea/LineaRollup.js';
+import { ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
+import { TaikoRollup } from '../src/taiko/TaikoRollup.js';
 
 async function createEstimator<R extends Rollup>(
   verifier: Contract,
@@ -64,9 +64,12 @@ const setups: Setup[] = [
         [],
         rollup.defaultWindow,
         hooks,
-        rollup.OptimismPortal,
-        gameFinder,
-        rollup.gameTypeBitMask,
+        [
+          rollup.OptimismPortal,
+          gameFinder,
+          rollup.gameTypeBitMask,
+          rollup.minAgeSec,
+        ],
       ],
       libs: { GatewayVM },
     });
@@ -134,7 +137,7 @@ const setups: Setup[] = [
   async (launch) => {
     const config = ScrollRollup.mainnetConfig;
     const { foundry, providers } = await launch(config);
-    const rollup = await ScrollRollup.create(providers, config);
+    const rollup = new ScrollRollup(providers, config);
     const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
     const hooks = await foundry.deploy({
       file: 'ScrollVerifierHooks',
@@ -142,7 +145,7 @@ const setups: Setup[] = [
     });
     const verifier = await foundry.deploy({
       file: 'ScrollVerifier',
-      args: [[], rollup.defaultWindow, hooks, rollup.rollup],
+      args: [[], rollup.defaultWindow, hooks, rollup.ScrollChain],
       libs: { GatewayVM },
     });
     const estimator = await createEstimator(verifier, rollup);
@@ -250,39 +253,39 @@ for (const setup of setups) {
   await foundry?.shutdown();
 }
 
-// 2024-10-01T08:54:16.613Z
+// 2024-10-08T03:42:15.814Z
 // {
 //   name: "OP",
-//   rollup: 67819n,
-//   account: 328177n,
-//   storage1: 262768n,
-//   storage0: 199175n,
+//   rollup: 76976n,
+//   account: 327670n,
+//   storage1: 262907n,
+//   storage0: 198808n,
 // }
 // {
 //   name: "LINEA",
-//   rollup: 48885n,
-//   account: 1437216n,
-//   storage1: 1365128n,
-//   storage0: 2663665n,
+//   rollup: 47323n,
+//   account: 1436666n,
+//   storage1: 1365175n,
+//   storage0: 2663145n,
 // }
 // {
 //   name: "ZKSYNC",
-//   rollup: 59035n,
-//   account: 13046698n,
-//   storage1: 13049354n,
-//   storage0: 13055257n,
+//   rollup: 57436n,
+//   account: 13046184n,
+//   storage1: 13048874n,
+//   storage0: 13054343n,
 // }
 // {
 //   name: "SCROLL",
-//   rollup: 48796n,
-//   account: 1232954n,
-//   storage1: 820490n,
+//   rollup: 47234n,
+//   account: 1232504n,
+//   storage1: 820563n,
 //   storage0: "execution reverted (unknown custom error)",
 // }
 // {
 //   name: "TAIKO",
-//   rollup: 63961n,
-//   account: 284180n,
-//   storage1: 228955n,
-//   storage0: 183642n,
+//   rollup: 62362n,
+//   account: 283697n,
+//   storage1: 229141n,
+//   storage0: 183286n,
 // }

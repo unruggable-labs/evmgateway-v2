@@ -1,7 +1,8 @@
 import { GatewayRequest } from '../../src/vm.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { Foundry } from '@adraffy/blocksmith';
-import { hexlify, randomBytes, concat, dataSlice } from 'ethers';
+import { hexlify, concat, dataSlice } from 'ethers/utils';
+import { randomBytes } from 'ethers/crypto';
 import { test, afterAll, expect } from 'bun:test';
 import { toPaddedHex } from '../../src/utils.js';
 
@@ -53,7 +54,7 @@ test('ClowesConcatSlice', async () => {
   expect(values).toStrictEqual([data, toPaddedHex(VALUE)]);
 });
 
-test('FOLLOW === PUSH_SLOT CONCAT KECCAK SLOT', async () => {
+test('SLOT_FOLLOW == PUSH_SLOT CONCAT KECCAK SLOT', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(() => foundry.shutdown());
   const contract = await foundry.deploy({
@@ -86,7 +87,7 @@ test('FOLLOW === PUSH_SLOT CONCAT KECCAK SLOT', async () => {
   );
 });
 
-test('SLOT_ADD === PUSH_SLOT PLUS SLOT', async () => {
+test('SLOT_ADD == PUSH_SLOT PLUS SLOT', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(() => foundry.shutdown());
   const contract = await foundry.deploy({
@@ -115,15 +116,36 @@ test('SLOT_ADD === PUSH_SLOT PLUS SLOT', async () => {
   );
 });
 
+test('PUSH_STACK(i) == PUSH_STACK_SIZE PUSH(1) SUBTRACT PUSH(i) SUBTRACT DUP', async () => {
+  const foundry = await Foundry.launch({ infoLog: false });
+  afterAll(() => foundry.shutdown());
+  await compare(
+    await EthProver.latest(foundry.provider),
+    new GatewayRequest().push(123).pushStack(0).addOutput(),
+    new GatewayRequest()
+      .push(123)
+      .pushStackSize() // length
+      .push(1)
+      .subtract() // length - 1
+      .push(0) // index = 0
+      .subtract() // (length - 1) - index
+      .op('DUP')
+      .addOutput()
+  );
+});
+
 async function compare(
   prover: EthProver,
   req1: GatewayRequest,
   req2: GatewayRequest
 ) {
   // the requests should be different
-  expect(req1.ops).not.toStrictEqual(req2.ops);
+  expect(req1.ops, 'program').not.toEqual(req2.ops);
+  const vm1 = await prover.evalRequest(req1);
+  const vm2 = await prover.evalRequest(req2);
+  expect(vm1.exitCode, 'exitCode').toEqual(vm2.exitCode);
+  const outputs1 = await vm1.resolveOutputs();
+  const outputs2 = await vm2.resolveOutputs();
   // the outputs should be the same
-  const v1 = await prover.evalRequest(req1).then((x) => x.resolveOutputs());
-  const v2 = await prover.evalRequest(req2).then((x) => x.resolveOutputs());
-  expect(v1).toStrictEqual(v2);
+  expect(outputs1, 'outputs').toEqual(outputs2);
 }

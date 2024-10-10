@@ -1,8 +1,9 @@
 import { OPRollup } from "../../src/op/OPRollup.js";
 import { createProviderPair } from "../providers.js";
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = OPRollup.baseMainnetConfig;
-const rollup = new OPRollup(createProviderPair(config), config);
+const rollup = new OPRollup(createProviderPair(USER_CONFIG, config), config);
 
 const commit = await logTime('fetchLatestCommit', rollup.fetchLatestCommit());
 await logTime('fetchParentCommit', rollup.fetchParentCommit(commit));
@@ -13,6 +14,7 @@ commit.prover.proofLRU.clear();
 
 await logTime('getStorage(cold)', commit.prover.getStorage(config.L2OutputOracle, 0n));
 await logTime('getProofs(warm)', commit.prover.getProofs(config.L2OutputOracle, [1n]));
+await logTime('getProofs(hot)', commit.prover.getProofs(config.L2OutputOracle, [1n]));
 await logTime('getStorage(hot)', commit.prover.getStorage(config.L2OutputOracle, 0n));
 
 await logTime('prove(hot)', commit.prover.prove([

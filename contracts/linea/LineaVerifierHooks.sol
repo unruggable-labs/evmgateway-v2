@@ -112,8 +112,5 @@ contract LineaVerifierHooks is IVerifierHooks {
             revert InvalidProof();
         // check interval
         if (leafL.hKey >= hKey || leafR.hKey <= hKey) revert InvalidProof();
-        // console2.logBytes32(leafL.hKey);
-        // console2.logBytes32(hKey);
-        // console2.logBytes32(leafR.hKey);
     }
 }
