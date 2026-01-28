@@ -1,0 +1,24 @@
+{
+  "0xB1Bd7A28a9e94c76476051337f428Bc3598D55Ea": {
+    "contract": "GatewayVM",
+    "tx": "https://sepolia.etherscan.io/tx/0xc21be5c414394c4aa2260bef7ee3752d60ee80642cf3b4c10b666a26ddacd1de",
+    "block": 6898808
+  },
+  "0x74fc89809D6A09DCA6aee6AbD1f2d78420a9351F": {
+    "contract": "ETHVerifierHooks",
+    "tx": "https://sepolia.etherscan.io/tx/0xf9e903b90881bcb97a5f9c4b7505e1d8d00d0d83ea666b583241378b8bb44af9",
+    "block": 6879788
+  },
+  "0x045ed722Af2A83C5Eff8b0Dd7BdD105a3C03AC80": {
+    "contract": "OPFaultVerifier",
+    "chain": "CELO_SEPOLIA",
+    "tx": "https://sepolia.etherscan.io/tx/0xdd1be2b4e4bd8e45939dcedb9b2f659692d1768cb27ac89aef4bd3bf05cf763a",
+    "block": 9798645
+  },
+  "0x5F1681D608e50458D96F43EbAb1137bA1d2A2E4D": {
+    "contract": "OPFaultVerifier",
+    "chain": "OP_SEPOLIA",
+    "tx": "https://sepolia.etherscan.io/tx/0x29d5005370e3df2e889c945d621d33f6f9b72f7fc40ba8a9fa01f0bcf9fdd1c5",
+    "block": 7165151
+  }
+}

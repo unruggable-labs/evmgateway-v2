@@ -4,7 +4,7 @@ import { Gateway } from '../../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { createProviderPair, providerURL } from '../providers.js';
-import { setupTests, testName } from './common.js';
+import { injectTestDeployment, setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
 
@@ -49,9 +49,6 @@ describe.skipIf(!!process.env.IS_CI)(
       ],
       libs: { GatewayVM },
     });
-    await setupTests(verifier, {
-      // https://lineascan.build/address/0x48F5931C5Dbc2cD9218ba085ce87740157326F59#code
-      slotDataContract: '0x48F5931C5Dbc2cD9218ba085ce87740157326F59',
-    });
+    await setupTests(verifier, injectTestDeployment(config.chain2));
   }
 );

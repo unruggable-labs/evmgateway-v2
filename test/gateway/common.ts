@@ -1,5 +1,6 @@
-import type { Chain, ChainPair, HexAddress } from '../../src/types.js';
+import type { Chain, ChainPair, Override } from '../../src/types.js';
 import type { RollupDeployment } from '../../src/rollup.js';
+import { type TestDeployments, DEPLOYMENTS } from './deployments.js';
 import { Gateway } from '../../src/gateway.js';
 import {
   beaconURL,
@@ -62,16 +63,32 @@ export function testName(
   return names.join(arrow);
 }
 
-type TestOptions = {
-  slotDataContract: HexAddress;
-  slotDataPointer?: HexAddress;
+type TestOptions = Partial<TestDeployments> & {
   log?: boolean;
   skipCI?: boolean;
   window?: number;
   quick?: boolean;
 };
 
-export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
+export function injectTestDeployment<T extends TestOptions>(
+  chain: Chain,
+  opts: T = {} as T
+): Override<T, TestDeployments> {
+  if (typeof opts.slotDataContract === 'string') {
+    return opts as Override<T, TestDeployments>;
+  }
+  const name = chainName(chain);
+  const deployment = DEPLOYMENTS[name];
+  if (!deployment?.slotDataContract) {
+    throw new Error(`missing SlotDataContract deployment: ${name}`);
+  }
+  return { ...deployment, ...opts };
+}
+
+export async function setupTests(
+  verifier: FoundryContract,
+  opts: TestDeployments & TestOptions
+) {
   const foundry = Foundry.of(verifier);
   const reader = await foundry.deploy({
     file: 'SlotDataReader',
@@ -91,8 +108,9 @@ function shouldSkip(opts: TestOptions) {
 
 export function testOP(
   config: RollupDeployment<OPConfig>,
-  opts: TestOptions & { minAgeSec?: number }
+  options: TestOptions & { minAgeSec?: number } = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(
     testName(config, { unfinalized: !!opts.minAgeSec }),
     async () => {
@@ -131,8 +149,9 @@ export function testOP(
 
 export function testOPFault(
   config: RollupDeployment<OPFaultConfig>,
-  opts: TestOptions & { minAgeSec?: number; realFinder?: boolean }
+  options: TestOptions & { minAgeSec?: number; realFinder?: boolean } = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(
     testName(config, { unfinalized: !!opts.minAgeSec }),
     async () => {
@@ -151,15 +170,11 @@ export function testOPFault(
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
       afterAll(ccip.shutdown);
       const commit = await gateway.getLatestCommit();
-      const gameFinder =
+      const gameFinder = await foundry.deploy(
         (opts.realFinder ?? !!process.env.REAL_FINDER)
-          ? await foundry.deploy({
-              file: 'OPFaultGameFinder',
-            })
-          : await foundry.deploy({
-              file: 'FixedOPFaultGameFinder',
-              args: [commit.index],
-            });
+          ? { file: 'OPFaultGameFinder' }
+          : { file: 'FixedOPFaultGameFinder', args: [commit.index] }
+      );
       const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
       const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
       const verifier = await foundry.deploy({
@@ -180,8 +195,9 @@ export function testOPFault(
 
 export function testArbitrum(
   config: RollupDeployment<ArbitrumConfig>,
-  opts: TestOptions & { minAgeBlocks?: number }
+  options: TestOptions & { minAgeBlocks?: number } = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(
     testName(config, { unfinalized: !!opts.minAgeBlocks }),
     async () => {
@@ -228,8 +244,9 @@ export function testArbitrum(
 
 export function testScroll(
   config: RollupDeployment<ScrollConfig | EuclidConfig>,
-  opts: TestOptions
+  options: TestOptions = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const isScroll = 'poseidon' in config;
     const rollup = isScroll
@@ -248,14 +265,11 @@ export function testScroll(
     const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
     afterAll(ccip.shutdown);
     const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = isScroll
-      ? await foundry.deploy({
-          file: 'ScrollVerifierHooks',
-          args: [config.poseidon],
-        })
-      : await foundry.deploy({
-          file: 'EthVerifierHooks',
-        });
+    const hooks = await foundry.deploy(
+      isScroll
+        ? { file: 'ScrollVerifierHooks', args: [config.poseidon] }
+        : { file: 'EthVerifierHooks' }
+    );
     const verifier = await foundry.deploy({
       file: 'ScrollVerifier',
       args: [
@@ -270,7 +284,8 @@ export function testScroll(
   });
 }
 
-export function testSelfEth(chain: Chain, opts: TestOptions) {
+export function testSelfEth(chain: Chain, options: TestOptions = {}) {
+  const opts = injectTestDeployment(chain, options);
   describe.skipIf(shouldSkip(opts))(chainName(chain), async () => {
     const foundry = await Foundry.launch({
       fork: providerURL(chain),
@@ -292,7 +307,8 @@ export function testSelfEth(chain: Chain, opts: TestOptions) {
   });
 }
 
-export function testTrustedEth(chain2: Chain, opts: TestOptions) {
+export function testTrustedEth(chain2: Chain, options: TestOptions = {}) {
+  const opts = injectTestDeployment(chain2, options);
   describe.skipIf(!!process.env.IS_CI)(
     testName({ chain1: CHAINS.VOID, chain2 }, { unfinalized: true }),
     async () => {
@@ -324,8 +340,9 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
 
 export function testLinea(
   config: RollupDeployment<LineaConfig>,
-  opts: TestOptions
+  options: TestOptions = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new LineaRollup(createProviderPair(config), config);
     const foundry = await Foundry.launch({
@@ -359,8 +376,9 @@ export function testLinea(
 
 export function testZKSync(
   config: RollupDeployment<ZKSyncConfig>,
-  opts: TestOptions
+  options: TestOptions = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new ZKSyncRollup(createProviderPair(config), config);
     const foundry = await Foundry.launch({
@@ -394,8 +412,9 @@ export function testZKSync(
 
 export function testTaiko(
   config: RollupDeployment<TaikoConfig>,
-  opts: TestOptions
+  options: TestOptions = {}
 ) {
+  const opts = injectTestDeployment(config.chain2, options);
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new TaikoRollup(createProviderPair(config), config);
     const foundry = await Foundry.launch({
@@ -425,8 +444,12 @@ export function testTaiko(
 export function testDoubleArbitrum(
   config12: RollupDeployment<ArbitrumConfig>,
   config23: RollupDeployment<ArbitrumConfig>,
-  opts: TestOptions & { minAgeBlocks12?: number; minAgeBlocks23?: number }
+  options: TestOptions & {
+    minAgeBlocks12?: number;
+    minAgeBlocks23?: number;
+  } = {}
 ) {
+  const opts = injectTestDeployment(config23.chain2, options);
   describe.skipIf(shouldSkip(opts))(
     testName(
       { ...config12, chain3: config23.chain2 },

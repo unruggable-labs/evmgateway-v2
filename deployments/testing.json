@@ -1,0 +1,192 @@
+{
+  "APE": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x06d349C4DdF4b6003bF3Eae0A67e6B9838E16667"
+  },
+  "ARB_NOVA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8"
+  },
+  "ARB1": {
+    "slotDataContract": "0xCC344B12fcc8512cc5639CeD6556064a8907c8a1",
+    "slotDataPointer": "0xaB6D328eB7457164Bb4C2AC27b05200B9b688ac3"
+  },
+  "ARB1_SEPOLIA": {
+    "slotDataContract": "0x09D2233D3d109683ea95Da4546e7E9Fc17a6dfAF",
+    "slotDataPointer": "0x433F956Aa4E72DA4Da098416fD07e061b23fa73F"
+  },
+  "BASE_SEPOLIA": {
+    "slotDataContract": "0x7AE933cf265B9C7E7Fd43F0D6966E34aaa776411",
+    "slotDataPointer": "0x2D70842D1a1d6413Ce44d0D5FD4AcFDc485540EA"
+  },
+  "BASE": {
+    "slotDataContract": "0x0C49361E151BC79899A9DD31B8B0CCdE4F6fd2f6",
+    "slotDataPointer": "0x972433d30b6b78C05ADf32972F7b8485C112E055"
+  },
+  "BLAST": {
+    "slotDataContract": "0xD2CBC073e564b1F30AD7dF3e99a1285e8b7Df8c7",
+    "slotDataPointer": "0xE387D5f4872A8F8B60B5e15e629d14c3D16f582F"
+  },
+  "BOB": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "BOB_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "CELO": {
+    "slotDataContract": "0xa969922E98dB2C94dE11717eF3eBc7B7A9008e22",
+    "slotDataPointer": "0xaD85E1DcfF8adA5420EcB5095D3CCd9bC2e26404"
+  },
+  "CELO_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "CYBER": {
+    "slotDataContract": "0xB0005b45cF88413Bda7F834AD44C5235Ee3cF656"
+  },
+  "FRAXTAL": {
+    "slotDataContract": "0xa5aDB66771314293b2e93BC5492584889c7eeC72",
+    "slotDataPointer": "0xaD85E1DcfF8adA5420EcB5095D3CCd9bC2e26404"
+  },
+  "HOLESKY": {
+    "slotDataContract": "0xB98fc08e1dba6dC0049329d676145b89711e27A8",
+    "slotDataPointer": "0xb39a11F27240C91B306d39987aaf7ccaF88aa824"
+  },
+  "HOODI": {
+    "slotDataContract": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05",
+    "slotDataPointer": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8"
+  },
+  "INK_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "INK": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "LINEA_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "LINEA": {
+    "slotDataContract": "0x48F5931C5Dbc2cD9218ba085ce87740157326F59",
+    "slotDataPointer": "0xDeF531a66D7eA1d4E038acABF7F5D1Bd2b306891"
+  },
+  "LISK": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "LISK_SEPOLIA": {
+    "slotDataContract": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8",
+    "slotDataPointer": "0xb3664493FB8414d3Dad1275aC0E8a12Ef859694d"
+  },
+  "MANTLE": {
+    "slotDataContract": "0xaD85E1DcfF8adA5420EcB5095D3CCd9bC2e26404"
+  },
+  "MINT": {
+    "slotDataContract": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05",
+    "slotDataPointer": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8"
+  },
+  "MINT_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "MODE": {
+    "slotDataContract": "0xFD649fAB87f436cC3De7d589d8F62c2109C8c59c"
+  },
+  "OP": {
+    "slotDataContract": "0xf9d79d8c09d24e0C47E32778c830C545e78512CF",
+    "slotDataPointer": "0x19E3e95804020282246E7C30C45cC77dE70E9dc2"
+  },
+  "OP_BNB": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6"
+  },
+  "OP_SEPOLIA": {
+    "slotDataContract": "0x09D2233D3d109683ea95Da4546e7E9Fc17a6dfAF",
+    "slotDataPointer": "0x433F956Aa4E72DA4Da098416fD07e061b23fa73F"
+  },
+  "POLYGON_POS": {
+    "slotDataContract": "0x5BBf0fD3Dd8252Ee03bA9C03cF92F33551584361",
+    "slotDataPointer": "0x8e40F7Aa288E703A8D01c84d52dE7f1B7321e14e"
+  },
+  "REDSTONE": {
+    "slotDataContract": "0x4C600c1ee9c81Be765387B7659347fc036D3dE6C"
+  },
+  "MAINNET": {
+    "slotDataContract": "0xC9D1E777033FB8d17188475CE3D8242D1F4121D5",
+    "slotDataPointer": "0xA537a7A8D9cE405a50d2e8aA00D4623E94E97d71"
+  },
+  "SCROLL": {
+    "slotDataContract": "0x09D2233D3d109683ea95Da4546e7E9Fc17a6dfAF",
+    "slotDataPointer": "0x28507d851729c12F193019c7b05D916D53e9Cf57"
+  },
+  "SCROLL_SEPOLIA": {
+    "slotDataContract": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05",
+    "slotDataPointer": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8"
+  },
+  "SEPOLIA": {
+    "slotDataContract": "0x494d872430442EdB6c1e05BB5521084Ad50312b2",
+    "slotDataPointer": "0xB637141BD6dF352680783D8098A58AEDEd34b83C"
+  },
+  "SHAPE": {
+    "slotDataContract": "0x2B61B95C4484fAec2a8DE939cC2629e64d8B6f67",
+    "slotDataPointer": "0x90d2f24a9C81778713EbDa7C417EC0dd30207094"
+  },
+  "SONEIUM": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "SONEIUM_SEPOLIA": {
+    "slotDataContract": "0xb3664493FB8414d3Dad1275aC0E8a12Ef859694d",
+    "slotDataPointer": "0x424Ea3fe5e105444d5a03Ae6DFe4423b5af3CE01"
+  },
+  "SWELL": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "TAIKO_HEKLA": {
+    "slotDataContract": "0xA2e3c1b0a43336A21E2fA56928bc7B7848c156A8",
+    "slotDataPointer": "0xb3664493FB8414d3Dad1275aC0E8a12Ef859694d"
+  },
+  "TAIKO": {
+    "slotDataContract": "0xAF7f1Fa8D5DF0D9316394433E841321160408565",
+    "slotDataPointer": "0x357276B7F176fD896176Bbf873e9606847A6Ef5a"
+  },
+  "UNICHAIN": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "UNICHAIN_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "WORLD": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57c2f437e0a5e155ced91a7a17bfc372c0af7b05"
+  },
+  "ZERO": {
+    "slotDataContract": "0x1Cd42904e173EA9f7BA05BbB685882Ea46969dEc"
+  },
+  "ZIRCUIT": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "ZIRCUIT_SEPOLIA": {
+    "slotDataContract": "0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6",
+    "slotDataPointer": "0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05"
+  },
+  "ZKSYNC": {
+    "slotDataContract": "0x1Cd42904e173EA9f7BA05BbB685882Ea46969dEc",
+    "slotDataPointer": "0x8D42501ADE3d0D02033B7FB6FfEa338828a1A467"
+  },
+  "ZKSYNC_SEPOLIA": {
+    "slotDataContract": "0x1Cd42904e173EA9f7BA05BbB685882Ea46969dEc",
+    "slotDataPointer": "0x8D42501ADE3d0D02033B7FB6FfEa338828a1A467"
+  },
+  "ZORA": {
+    "slotDataContract": "0x73404681064a8e16c22C1411A02D47e6395f6582",
+    "slotDataPointer": "0xBEfeca057ea022e7aB419670a659d32f125973C1"
+  }
+}

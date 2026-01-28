@@ -86,7 +86,12 @@ If you are interested in building a solution for another chain, please take a lo
 	* Use `reverse:<chain>` for [`ReverseOPRollup`](./src/op/ReverseOPRollup.ts)
 	* Use `self:<chain>` for [`EthSelfRollup`](./src/eth/EthSelfRollup.ts)
 	* Include `--unfinalized(=minAge)` to use unfinalized commits (will throw if not available)
-	* Include `--latest` for `"latest"` instead of `"finalized"` block tag
+	* For block tag of current view of chain:
+		* Default: `"finalized"`
+		* Include `--latest` for `"latest"`
+		* Include `--blockTag=latest|finalized|safe`
+		* Include `--blockTag=-#` for relative block, eg. `getBlockNumber(latest) - #`
+		* Include `--blockTag=#` for specific block
 	* Include `--debug` to print `OP_DEBUG` statements
 	* Include `--calls` to print RPC calls.
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
@@ -118,6 +123,12 @@ Commands available include:
 	* `bun run test-gateways`
 		* [Contract](./test/gateway/SlotDataContract.sol) &rarr; [Reader](./test/gateway/SlotDataReader.sol) &rarr; [Tests](./test/gateway/tests.ts)
 		* ⚠️ Polygon has poor `eth_getProof` support
+
+## Deployments
+
+* [Mainnet](./deployments/mainnet.json)
+* [Sepolia](./deployments/sepolia.json)
+* [Testing](./deployments/testing.json)
 
 ## Examples
 

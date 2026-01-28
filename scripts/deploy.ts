@@ -54,7 +54,6 @@ async function promptEtherscan() {
 async function promptDeployment(): Promise<Deployable> {
   console.log('1) OPFaultGameFinder');
   console.log('2) EthVerifierHooks');
-  console.log('3) OPFaultVerifier');
   switch (await prompt('Deployment: ')) {
     case '1':
       return deployer.prepare({

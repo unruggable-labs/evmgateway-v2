@@ -612,14 +612,15 @@ export function providerName(chain: Chain): string {
 }
 
 export function createProvider(chain: Chain): Provider {
-  const fr = new FetchRequest(providerURL(chain));
+  const info = decideProvider(chain);
+  const fr = new FetchRequest(info.url);
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
   //   console.log(req.url);
   //   return req;
   // };
   PROVIDER_EVENTS.emit('create', chain, fr);
-  return new GatewayProvider(fr, chain);
+  return new GatewayProvider(fr, chain, info.type === 'drpc' ? 3 : 10);
 }
 
 export function createProviderPair(

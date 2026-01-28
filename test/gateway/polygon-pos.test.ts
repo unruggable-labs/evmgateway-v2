@@ -3,7 +3,7 @@ import { Gateway } from '../../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { createProviderPair, providerURL } from '../providers.js';
-import { setupTests, testName } from './common.js';
+import { injectTestDeployment, setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
 
@@ -32,10 +32,5 @@ describe.skipIf(!!process.env.IS_CI)(testName(config), async () => {
     ],
     libs: { GatewayVM },
   });
-  await setupTests(verifier, {
-    // https://polygonscan.com/address/0x5BBf0fD3Dd8252Ee03bA9C03cF92F33551584361#code
-    slotDataContract: '0x5BBf0fD3Dd8252Ee03bA9C03cF92F33551584361',
-    // https://polygonscan.com/address/0x8e40F7Aa288E703A8D01c84d52dE7f1B7321e14e#code
-    slotDataPointer: '0x8e40F7Aa288E703A8D01c84d52dE7f1B7321e14e',
-  });
+  await setupTests(verifier, injectTestDeployment(config.chain2));
 });

@@ -33,3 +33,5 @@ export type ProofSequenceV1 = {
 export type KeyOf<C, T> = {
   [K in keyof C]: C[K] extends T ? K : never;
 }[keyof C];
+
+export type Override<A, B> = Omit<A, keyof B> & B;

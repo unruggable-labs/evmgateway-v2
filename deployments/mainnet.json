@@ -1,0 +1,12 @@
+{
+  "0xEe6B722f889D8CFC6e23beD17e134b4BCC98119c": {
+    "contract": "GatewayVM",
+    "tx": "https://etherscan.io/tx/0xed2ee7a8ab506456e92caf7053d02474ebaea6f0dfd3889e30572416b961cf0c",
+    "block": 21042227
+  },
+  "0x746dEA23C8A42A08941Af43Af7f3c6B5dF818BB2": {
+    "contract": "ETHVerifierHooks",
+    "tx": "https://etherscan.io/tx/0x45ac6065c3d0f88ca9e0d1df0a42d0d62f5223698f97ac0de8fcb8d6627a6d41",
+    "block": 21042222
+  }
+}
