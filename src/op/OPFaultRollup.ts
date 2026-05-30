@@ -1,8 +1,8 @@
+import { Interface } from 'ethers/abi';
+import { Contract } from 'ethers/contract';
+import { CHAINS } from '../chains.js';
 import type { RollupDeployment } from '../rollup.js';
 import type { HexAddress, HexString32, ProviderPair } from '../types.js';
-import { Contract } from 'ethers/contract';
-import { Interface } from 'ethers/abi';
-import { CHAINS } from '../chains.js';
 import { isEthersError } from '../utils.js';
 import {
   AbstractOPRollup,
@@ -25,10 +25,10 @@ const ANCHOR_STATE_REGISTRY_ABI = new Interface([
 //   `function respectedGameType() view returns (uint32)`,
 // ]);
 
-// const DISPUTE_GAME_FACTORY_ABI = new Interface([
-//   `function gameCount() view returns (uint256)`,
-//   `function gameAtIndex(uint256) view returns (uint256 gameType, uint256 created, address gameProxy)`,
-// ]);
+const DISPUTE_GAME_FACTORY_ABI = new Interface([
+  `function gameCount() view returns (uint256)`,
+  `function gameAtIndex(uint256) view returns (uint256 gameType, uint256 created, address gameProxy)`,
+]);
 
 const GAME_ABI = new Interface([`function rootClaim() view returns (bytes32)`]);
 
@@ -47,6 +47,8 @@ export type OPFaultConfig = {
 
 export type OPFaultCommit = AbstractOPCommit & { game: ABIFoundGame };
 
+export type OPFaultParamTuple = [HexAddress, bigint, bigint[], HexAddress[]];
+
 type ABIFoundGame = {
   gameType: bigint;
   created: bigint;
@@ -60,6 +62,7 @@ const FINDER_SEPOLIA = '0x8CB499cbfe991cAf2d6F18CcCC408dC8265eBE60'; // 20251205
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly ANCHOR_STATE_REGISTRY_ABI = ANCHOR_STATE_REGISTRY_ABI;
+  static readonly DISPUTE_GAME_FACTORY_ABI = DISPUTE_GAME_FACTORY_ABI;
   static readonly GAME_ABI = GAME_ABI;
   static readonly FINDER_ABI = FINDER_ABI;
 
@@ -220,10 +223,10 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     return !!this.minAgeSec; // nonzero => unfinalized
   }
 
-  get paramTuple() {
+  get paramTuple(): OPFaultParamTuple {
     return [
-      this.AnchorStateRegistry.target,
-      this.minAgeSec,
+      this.AnchorStateRegistry.target as HexAddress,
+      BigInt(this.minAgeSec),
       this.gameTypes,
       this.allowedProposers,
     ];

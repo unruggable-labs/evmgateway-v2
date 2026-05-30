@@ -32,10 +32,12 @@ interface IDisputeGameFactory {
         returns (uint256 gameType, uint256 created, IDisputeGame gameProxy);
 }
 
+// https://github.com/ethereum-optimism/optimism/blob/v1.18.1/packages/contracts-bedrock/interfaces/dispute/IDisputeGame.sol
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IDisputeGame.sol
 interface IDisputeGame {
     function status() external view returns (uint256);
-    function l2BlockNumber() external view returns (uint256);
+    function l2BlockNumber() external view returns (uint256); // old
+    function l2SequenceNumber() external view returns (uint256); // new
     function rootClaim() external view returns (bytes32);
     function resolvedAt() external view returns (uint64);
     function wasRespectedGameTypeWhenCreated() external view returns (bool);
@@ -101,4 +103,8 @@ interface IOPSuccinctFaultDisputeGame is IDisputeGame {
         uint64 deadline;
     }
     function claimData() external view returns (ClaimData memory);
+}
+
+interface IAggregateVerifier {
+    function parentAddress() external view returns (address);
 }

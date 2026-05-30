@@ -2,6 +2,8 @@
 
 ## Mainnet
 
+* `2026-05-29` &mdash; TODO
+	* add `AggregateVerifier` support (GameType 621)
 * `2025-12-05` &mdash; [`0x981829755e38b16E6dc23762c1289CA3F4065682`](https://etherscan.io/address/0x981829755e38b16E6dc23762c1289CA3F4065682#code)
 	* fix `gameAtIndex()` initial `succinctGameIndex`
 * `2025-12-02` &mdash; [`0xDa9883a512b8E1F48bF414f702338F4fAe87D8E8`](https://etherscan.io/address/0xDa9883a512b8E1F48bF414f702338F4fAe87D8E8#code)
